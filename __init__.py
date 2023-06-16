@@ -27,6 +27,12 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         description="Define the export filepath for image matches",
         subtype="FILE_PATH"
         )
+    
+    model: bpy.props.PointerProperty(
+        name="3D model",
+        description="3D model",
+        type=bpy.types.Object
+    ) 
 
 
 class ImageExportPanel(bpy.types.Panel):
@@ -45,6 +51,10 @@ class ImageExportPanel(bpy.types.Panel):
 
         settings = context.scene.match_settings
         # scene = context.scene
+
+        row = layout.row(align=True)
+        row.label(text="3D model :")
+        row.prop(settings, "model", text="")
 
         row = layout.row(align=True)
         row.label(text="Export filepath :")
@@ -113,6 +123,30 @@ def convert_camera_settings(camera_name):
     return image_point
 
 
+def calculate_camera_intersection(camera_name):
+    """Calculate intersection point of camera ray and 3D model"""
+    model = bpy.context.scene.match_settings.model
+    camera_object = bpy.data.objects[camera_name]
+
+    # vector along direction camera points
+    camera_direction = Vector((0, 0, -1))
+    camera_direction.rotate(camera_object.rotation_euler)
+    camera_direction.normalize()
+    
+    # Needs any rotation/scaling etc of model to be applied!!
+    # If not I would need to convert the camera location / direction to the 
+    # mesh's local space for this to work properly
+    cast_result = model.ray_cast(camera_object.location, camera_direction)
+    # cast_result = model.ray_cast(Vector((0, 0, 100)), Vector((0, 0, -1)))
+
+    hit_position = cast_result[1]
+    # Account for Y-UP axis orientation
+    hit_position_corrected = [
+        hit_position.x, hit_position.z, -hit_position.y]
+
+    return hit_position_corrected
+
+
 def export_to_json(image_points):
     output = {}
     output["image_points"] = image_points
@@ -140,7 +174,10 @@ class OBJECT_OT_export_matches(Operator):
         image_points = []
 
         for camera_name in bpy.data.cameras.keys():
-            image_points.append(convert_camera_settings(camera_name))
+            image_point = convert_camera_settings(camera_name)
+            image_point["point_position"] = \
+                calculate_camera_intersection(camera_name)
+            image_points.append(image_point)
 
         export_to_json(image_points)
 
