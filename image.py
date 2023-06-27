@@ -49,6 +49,10 @@ class IMAGE_OT_add_image(bpy.types.Operator):
         image_collection = bpy.data.collections.new(image_name_no_extension)
         result_collection.children.link(image_collection)
 
+        # Collection for 3D points
+        point_collection = bpy.data.collections.new(settings.points_collection_name)
+        image_collection.children.link(point_collection)
+
         camera_data = bpy.data.cameras.new(name='Camera')
         camera_data.show_background_images = True
         

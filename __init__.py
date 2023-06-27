@@ -82,6 +82,11 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         description="Collection for image match results",
         default="image-match")
     
+    points_collection_name: bpy.props.StringProperty(
+        name="3D points Collection",
+        description="Collection for 3D points",
+        default="points-3d")
+    
     current_image_collection: bpy.props.PointerProperty(
         name="",
         type=bpy.types.Collection,
