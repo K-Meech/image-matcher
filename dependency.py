@@ -35,7 +35,8 @@ def run_python(cmd_list, timeout=600, check=False, env=None):
     subprocess.run(cmd_list, 
                    timeout=timeout,
                    check=check, 
-                   env=env)
+                   env=env,
+                   stderr=subprocess.PIPE)
 
 
 def install_all_dependencies(dependencies):

@@ -142,8 +142,10 @@ class PNP_OT_install_dependencies(bpy.types.Operator):
             register_classes()
             return {"FINISHED"}
 
-        except (subprocess.CalledProcessError, ImportError) as err:
-            self.report({"ERROR"}, str(err))
+        except (subprocess.CalledProcessError, ImportError) as e:
+            self.report({"ERROR"}, 
+                        f"Failed to install dependencies.\n Error: {e.stderr}")
+            print(e.stderr)
             dependencies_installed = False
             return {"CANCELLED"}
 
