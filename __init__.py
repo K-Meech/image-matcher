@@ -16,7 +16,13 @@ import subprocess
 from collections import namedtuple
 from .export import OBJECT_OT_export_matches
 from . import dependency
+from .image import IMAGE_OT_add_image, IMAGE_OT_swap_image
 
+
+def poll_image_collection(self, object):
+    # Only allow selection of collections inside the result collection
+    result_collection = bpy.data.collections[self.collection]
+    return object.name in result_collection.children
 
 class ImageMatchSettings(bpy.types.PropertyGroup):
 
@@ -64,6 +70,22 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         name="Information",
         description="Solver Output Message",
         default="")
+    
+    image_filepath: bpy.props.StringProperty(
+        name="Image filepath",
+        default="",
+        description="Define the import filepath for image",
+        subtype="FILE_PATH")
+    
+    collection: bpy.props.StringProperty(
+        name="Image Match Collection",
+        description="Collection for image match results",
+        default="image-match")
+    
+    current_image_collection: bpy.props.PointerProperty(
+        name="",
+        type=bpy.types.Collection,
+        poll=poll_image_collection)
 
 
 class ImageExportPanel(bpy.types.Panel):
@@ -72,11 +94,24 @@ class ImageExportPanel(bpy.types.Panel):
     bl_idname = "VIEW3D_PT_ImageExport"
     bl_space_type = "CLIP_EDITOR"
     bl_region_type = "TOOLS"
-    bl_category = "Solve"
+    bl_category = "Image Match"
 
     def draw(self, context):
         layout = self.layout
         settings = context.scene.match_settings
+
+        row = layout.row(align=True)
+        row.label(text="Image filepath:")
+        row.prop(settings, "image_filepath", text="")
+
+        row = layout.row()
+        row.operator("imagematches.add_image")
+
+        row = layout.row()
+        row.label(text="Change image:")
+        row.prop(settings, "current_image_collection")
+        row = layout.row()
+        row.operator("imagematches.swap_image")
 
         col = layout.column(heading="3D Points", align=True)
         col.prop(settings, "pnp_points_collection")
@@ -183,7 +218,9 @@ def register_classes(unregister=False):
                OBJECT_OT_export_matches,
                PNP_OT_calibrate_camera,
                PNP_OT_pose_camera,
-               ImageExportPanel]
+               ImageExportPanel,
+               IMAGE_OT_add_image,
+               IMAGE_OT_swap_image]
     
     if unregister:
         for cls in reversed(classes):
