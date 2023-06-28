@@ -1,6 +1,7 @@
 import bpy
 import os
 from bpy_extras import view3d_utils
+from mathutils import Vector
 
 
 def open_movie_clip(movie_clip):
@@ -200,7 +201,29 @@ def ray_cast(context, event):
 
     #     best_original.select_set(True)
     #     context.view_layer.objects.active = best_original
-    
+
+
+def add_clip_marker(context, event):
+    scene = context.scene
+    region = context.region
+    rv3d = context.region_data
+    region_coord = event.mouse_region_x, event.mouse_region_y
+    view_coord = region.view2d.region_to_view(region_coord[0], region_coord[1])
+    settings = context.scene.match_settings
+    print(f"coords: {view_coord[0]}, {view_coord[1]}")
+
+    # Only add markers if lie within the bounds of the image so (0, 1)
+    if view_coord[0] >= 0 and view_coord[0] <= 1 and view_coord[1] >= 0 and view_coord[1] <= 1:
+        current_movie_clip = context.edit_movieclip
+        current_frame = context.scene.frame_current
+        
+
+        # track = current_movie_clip.tracking.tracks.new(name="")
+        track = current_movie_clip.tracking.tracks.new(name="", frame=current_frame)
+        track.markers[0].co = Vector((view_coord[0], view_coord[1]))
+        # track.markers.insert_frame(current_frame, co=(view_coord[0], view_coord[1]))
+        # bpy.ops.clip.add_marker(location=view_coord)
+
 
 # Can check for currently active handlers with 
 # bpy.context.window_manager.operators.keys() in blender terminal??
@@ -215,7 +238,10 @@ class IMAGE_OT_add_points(bpy.types.Operator):
             # allow navigation
             return {'PASS_THROUGH'}
         elif event.type == 'LEFTMOUSE':
-            ray_cast(context, event)
+            if context.space_data.type == "VIEW_3D":
+                ray_cast(context, event)
+            else:
+                add_clip_marker(context, event)
             return {'RUNNING_MODAL'}
         elif event.type in {'RIGHTMOUSE', 'ESC'}:
             return {'CANCELLED'}
@@ -223,11 +249,11 @@ class IMAGE_OT_add_points(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
     def invoke(self, context, event):
-        if context.space_data.type == 'VIEW_3D':
+        if context.space_data.type == 'VIEW_3D' or context.space_data.type == "CLIP_EDITOR":
             print("adding modal handler")
             context.window_manager.modal_handler_add(self)
             return {'RUNNING_MODAL'}
         else:
-            self.report({'WARNING'}, "Active space must be a View3d")
+            self.report({'WARNING'}, "Active space must be View3d or Clip Editor")
             return {'CANCELLED'}
 
