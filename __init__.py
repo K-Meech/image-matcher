@@ -16,7 +16,7 @@ import subprocess
 from collections import namedtuple
 from .export import OBJECT_OT_export_matches
 from . import dependency
-from .image import IMAGE_OT_add_image, IMAGE_OT_swap_image
+from .image import IMAGE_OT_add_image, IMAGE_OT_swap_image, IMAGE_OT_add_points
 
 
 def poll_image_collection(self, object):
@@ -117,6 +117,9 @@ class ImageExportPanel(bpy.types.Panel):
         row.prop(settings, "current_image_collection")
         row = layout.row()
         row.operator("imagematches.swap_image")
+
+        row = layout.row()
+        row.operator("imagematches.add_points")
 
         col = layout.column(heading="3D Points", align=True)
         col.prop(settings, "pnp_points_collection")
@@ -225,7 +228,8 @@ def register_classes(unregister=False):
                PNP_OT_pose_camera,
                ImageExportPanel,
                IMAGE_OT_add_image,
-               IMAGE_OT_swap_image]
+               IMAGE_OT_swap_image,
+               IMAGE_OT_add_points]
     
     if unregister:
         for cls in reversed(classes):
