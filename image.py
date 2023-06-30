@@ -109,7 +109,7 @@ class IMAGE_OT_swap_image(bpy.types.Operator):
         open_movie_clip(movie_clip)
 
         return {'FINISHED'}
-
+    
 
 # Based on blender template - operator modal view 3D raycast   
 
@@ -189,19 +189,6 @@ def ray_cast(context, event):
         point_collection = image_collection.children[settings.points_collection_name]
         point_collection.objects.link(empty)
 
-    # # now we have the object under the mouse cursor,
-    # # we could do lots of stuff but for the example just select.
-    # if best_obj is not None:
-    #     # for selection etc. we need the original object,
-    #     # evaluated objects are not in viewlayer
-    #     best_original = best_obj.original
-
-    #     print("Changing properties...")
-    #     best_original.material_slots[0].material.diffuse_color=(1, 0, 0, 0.8)
-
-    #     best_original.select_set(True)
-    #     context.view_layer.objects.active = best_original
-
 
 def add_clip_marker(context, event):
     scene = context.scene
@@ -217,12 +204,8 @@ def add_clip_marker(context, event):
         current_movie_clip = context.edit_movieclip
         current_frame = context.scene.frame_current
         
-
-        # track = current_movie_clip.tracking.tracks.new(name="")
         track = current_movie_clip.tracking.tracks.new(name="", frame=current_frame)
         track.markers[0].co = Vector((view_coord[0], view_coord[1]))
-        # track.markers.insert_frame(current_frame, co=(view_coord[0], view_coord[1]))
-        # bpy.ops.clip.add_marker(location=view_coord)
 
 
 # Can check for currently active handlers with 
@@ -238,10 +221,12 @@ class IMAGE_OT_add_points(bpy.types.Operator):
             # allow navigation
             return {'PASS_THROUGH'}
         elif event.type == 'LEFTMOUSE':
-            if context.space_data.type == "VIEW_3D":
-                ray_cast(context, event)
-            else:
-                add_clip_marker(context, event)
+            # Only place points on mouse press, not release
+            if event.value == "PRESS":
+                if context.space_data.type == "VIEW_3D":
+                    ray_cast(context, event)
+                else:
+                    add_clip_marker(context, event)
             return {'RUNNING_MODAL'}
         elif event.type in {'RIGHTMOUSE', 'ESC'}:
             return {'CANCELLED'}
