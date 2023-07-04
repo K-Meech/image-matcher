@@ -17,7 +17,8 @@ from collections import namedtuple
 from .export import OBJECT_OT_export_matches
 from . import dependency
 from .image import IMAGE_OT_add_image, IMAGE_OT_swap_image, \
-    IMAGE_OT_add_points, IMAGE_OT_add_3d_point, IMAGE_OT_add_2d_point, set_add_points
+    IMAGE_OT_add_points, IMAGE_OT_add_3d_point, IMAGE_OT_add_2d_point, \
+        IMAGE_OT_delete_points, IMAGE_OT_delete_3d_point, IMAGE_OT_delete_2d_point, set_add_points, set_delete_points
 
 
 def poll_image_collection(self, object):
@@ -100,14 +101,11 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         update=set_add_points
     )
 
-    mouse_x: bpy.props.FloatProperty(
-        name='Mouse x', 
-        description='Mouse x'
-    )
-
-    mouse_y: bpy.props.FloatProperty(
-        name='Mouse y', 
-        description='Mouse y'
+    delete_points_enabled: bpy.props.BoolProperty(
+        name="Delete points enabled",
+        description="Delete points enabled",
+        default=False,
+        update=set_delete_points
     )
 
 
@@ -136,15 +134,29 @@ class ImageExportPanel(bpy.types.Panel):
         row = layout.row()
         row.operator("imagematches.swap_image")
 
+        row = layout.row(align=True)
+        row.label(text="3D model :")
+        row.prop(settings, "model", text="")
+
         if not settings.add_points_enabled:
-            icon = "PLAY"
-            txt = 'Enable add points'
+            add_icon = "PLAY"
+            add_txt = 'Enable add points'
         else:
-            icon = "PAUSE"
-            txt = 'Right click or ESC to cancel'
+            add_icon = "PAUSE"
+            add_txt = 'Right click or ESC to cancel'
         
         row = layout.row()
-        layout.prop(settings, 'add_points_enabled', text=txt, icon=icon, toggle=True)
+        layout.prop(settings, 'add_points_enabled', text=add_txt, icon=add_icon, toggle=True)
+
+        if not settings.delete_points_enabled:
+            delete_icon = "PLAY"
+            delete_txt = 'Enable delete points'
+        else:
+            delete_icon = "PAUSE"
+            delete_txt = 'Right click or ESC to cancel'
+        
+        row = layout.row()
+        layout.prop(settings, 'delete_points_enabled', text=delete_txt, icon=delete_icon, toggle=True)
 
         col = layout.column(heading="3D Points", align=True)
         col.prop(settings, "pnp_points_collection")
@@ -256,7 +268,10 @@ def register_classes(unregister=False):
                IMAGE_OT_swap_image,
                IMAGE_OT_add_points,
                IMAGE_OT_add_3d_point,
-               IMAGE_OT_add_2d_point
+               IMAGE_OT_add_2d_point,
+               IMAGE_OT_delete_points,
+               IMAGE_OT_delete_3d_point,
+               IMAGE_OT_delete_2d_point
                ]
     
     if unregister:
