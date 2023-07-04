@@ -109,10 +109,9 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
     )
 
 
-class ImageExportPanel(bpy.types.Panel):
-    """Creates a Panel in the scene context of the properties editor"""
-    bl_label = "Image Match"
-    bl_idname = "VIEW3D_PT_ImageExport"
+class AddImagePanel(bpy.types.Panel):
+    bl_label = "Add / Change Image"
+    bl_idname = "VIEW3D_PT_AddImage"
     bl_space_type = "CLIP_EDITOR"
     bl_region_type = "TOOLS"
     bl_category = "Image Match"
@@ -134,29 +133,53 @@ class ImageExportPanel(bpy.types.Panel):
         row = layout.row()
         row.operator("imagematches.swap_image")
 
+
+class PointsPanel(bpy.types.Panel):
+    bl_label = "Points"
+    bl_idname = "VIEW3D_PT_Points"
+    bl_space_type = "CLIP_EDITOR"
+    bl_region_type = "TOOLS"
+    bl_category = "Image Match"
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.match_settings
+
         row = layout.row(align=True)
         row.label(text="3D model :")
         row.prop(settings, "model", text="")
 
         if not settings.add_points_enabled:
             add_icon = "PLAY"
-            add_txt = 'Enable add points'
+            add_txt = 'Add points'
         else:
             add_icon = "PAUSE"
             add_txt = 'Right click or ESC to cancel'
         
-        row = layout.row()
-        layout.prop(settings, 'add_points_enabled', text=add_txt, icon=add_icon, toggle=True)
+        row = layout.row(align=True)
+        row.prop(settings, 'add_points_enabled', text=add_txt, icon=add_icon, toggle=True)
 
         if not settings.delete_points_enabled:
             delete_icon = "PLAY"
-            delete_txt = 'Enable delete points'
+            delete_txt = 'Delete points'
         else:
             delete_icon = "PAUSE"
             delete_txt = 'Right click or ESC to cancel'
         
-        row = layout.row()
-        layout.prop(settings, 'delete_points_enabled', text=delete_txt, icon=delete_icon, toggle=True)
+        # row = layout.row()
+        row.prop(settings, 'delete_points_enabled', text=delete_txt, icon=delete_icon, toggle=True)
+
+
+class PnpPanel(bpy.types.Panel):
+    bl_label = "PNP"
+    bl_idname = "VIEW3D_PT_PNP"
+    bl_space_type = "CLIP_EDITOR"
+    bl_region_type = "TOOLS"
+    bl_category = "Image Match"
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.match_settings
 
         col = layout.column(heading="3D Points", align=True)
         col.prop(settings, "pnp_points_collection")
@@ -180,7 +203,18 @@ class ImageExportPanel(bpy.types.Panel):
         col = layout.column(align=True)
         col.label(text=settings.pnp_msg)
 
-        # EXPORT SETTINGS
+
+class ExportPanel(bpy.types.Panel):
+    bl_label = "Export"
+    bl_idname = "VIEW3D_PT_Export"
+    bl_space_type = "CLIP_EDITOR"
+    bl_region_type = "TOOLS"
+    bl_category = "Image Match"
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.match_settings
+
         row = layout.row(align=True)
         row.label(text="3D model :")
         row.prop(settings, "model", text="")
@@ -263,7 +297,10 @@ def register_classes(unregister=False):
                OBJECT_OT_export_matches,
                PNP_OT_calibrate_camera,
                PNP_OT_pose_camera,
-               ImageExportPanel,
+               AddImagePanel,
+               PointsPanel,
+               PnpPanel,
+               ExportPanel,
                IMAGE_OT_add_image,
                IMAGE_OT_swap_image,
                IMAGE_OT_add_points,
