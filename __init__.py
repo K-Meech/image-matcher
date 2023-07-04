@@ -16,7 +16,8 @@ import subprocess
 from collections import namedtuple
 from .export import OBJECT_OT_export_matches
 from . import dependency
-from .image import IMAGE_OT_add_image, IMAGE_OT_swap_image, IMAGE_OT_add_points
+from .image import IMAGE_OT_add_image, IMAGE_OT_swap_image, \
+    IMAGE_OT_add_points, IMAGE_OT_add_3d_point, IMAGE_OT_add_2d_point, set_add_points
 
 
 def poll_image_collection(self, object):
@@ -91,6 +92,23 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         name="",
         type=bpy.types.Collection,
         poll=poll_image_collection)
+    
+    add_points_enabled: bpy.props.BoolProperty(
+        name="Add points enabled",
+        description="Add points enabled",
+        default=False,
+        update=set_add_points
+    )
+
+    mouse_x: bpy.props.FloatProperty(
+        name='Mouse x', 
+        description='Mouse x'
+    )
+
+    mouse_y: bpy.props.FloatProperty(
+        name='Mouse y', 
+        description='Mouse y'
+    )
 
 
 class ImageExportPanel(bpy.types.Panel):
@@ -118,8 +136,15 @@ class ImageExportPanel(bpy.types.Panel):
         row = layout.row()
         row.operator("imagematches.swap_image")
 
+        if not settings.add_points_enabled:
+            icon = "PLAY"
+            txt = 'Enable add points'
+        else:
+            icon = "PAUSE"
+            txt = 'Right click or ESC to cancel'
+        
         row = layout.row()
-        row.operator("imagematches.add_points")
+        layout.prop(settings, 'add_points_enabled', text=txt, icon=icon, toggle=True)
 
         col = layout.column(heading="3D Points", align=True)
         col.prop(settings, "pnp_points_collection")
@@ -229,7 +254,10 @@ def register_classes(unregister=False):
                ImageExportPanel,
                IMAGE_OT_add_image,
                IMAGE_OT_swap_image,
-               IMAGE_OT_add_points]
+               IMAGE_OT_add_points,
+               IMAGE_OT_add_3d_point,
+               IMAGE_OT_add_2d_point
+               ]
     
     if unregister:
         for cls in reversed(classes):

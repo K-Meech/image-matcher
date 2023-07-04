@@ -113,6 +113,54 @@ class IMAGE_OT_swap_image(bpy.types.Operator):
 
 # Based on blender template - operator modal view 3D raycast   
 
+# Region vs region coordinate
+def coordinates_within_region(region, region_coordinate):
+    if 0 <= region_coordinate[0] <= region.width and 0 <= region_coordinate[1] <= region.height:
+        # print("in")
+        return True
+    else:
+        # print("out")
+        return False
+    
+
+# Region vs global coordinates
+def coordinates_within_region_bounds(region, coordinate):
+    if (region.x < coordinate[0] < region.x + region.width 
+        and region.y < coordinate[1] < region.y + region.height):
+        print("in region")
+        return True
+    else:
+        print("out region")
+        return False
+    
+
+def find_area(context, area_type):
+    # Find window/area/region corresponding to main window of given area type
+    selected_window = None
+    selected_area = None
+    selected_region = None
+
+    for window in context.window_manager.windows:
+        screen = window.screen
+        for area in screen.areas:
+            if area.type == area_type:
+                selected_area = area
+                selected_window = window
+                break
+            
+    if selected_area is not None:
+        selected_region = find_region(selected_area)
+
+    return (selected_window, selected_area, selected_region)
+
+
+def find_region(area):
+    """Find main view window of area"""
+    for region in area.regions:
+        if region.type == "WINDOW":
+            return region
+
+
 def visible_objects_and_duplis(context):
     """Loop over (object, matrix) pairs (mesh only)"""
 
@@ -144,101 +192,157 @@ def obj_ray_cast(ray_origin, ray_target, obj, matrix):
         return None, None, None
 
 
-def ray_cast(context, event):
-    """Run this function on left mouse, execute the ray cast"""
-    # get the context arguments
-    print("ray cast go....")
-    scene = context.scene
-    region = context.region
-    rv3d = context.region_data
-    coord = event.mouse_region_x, event.mouse_region_y
-    settings = context.scene.match_settings
+class IMAGE_OT_add_3d_point(bpy.types.Operator):
+    """Adds point to 3D view corresponding to global mouse position in settings"""
 
-    # get the ray from the viewport and mouse
-    view_vector = view3d_utils.region_2d_to_vector_3d(region, rv3d, coord)
-    ray_origin = view3d_utils.region_2d_to_origin_3d(region, rv3d, coord)
+    bl_idname = "imagematches.add_3d_point"
+    bl_label = "Add 3D point"
+    # bl_options = {'REGISTER', 'UNDO'}
 
-    ray_target = ray_origin + view_vector
+    def execute(self, context):
+        """Run this function on left mouse, execute the ray cast"""
 
-    # cast rays and find the closest object
-    best_length_squared = -1.0
-    best_obj = None
-    best_hit = None
+        region = context.region
+        rv3d = context.region_data
+        settings = context.scene.match_settings
 
-    # Here the cursor is set to the location of the hit - could use this
-    # to spawn empty??
-    for obj, matrix in visible_objects_and_duplis(context):
-        if obj.type == 'MESH':
-            hit, normal, face_index = obj_ray_cast(ray_origin, ray_target, obj, matrix)
-            if hit is not None:
-                hit_world = matrix @ hit
-                scene.cursor.location = hit_world
-                length_squared = (hit_world - ray_origin).length_squared
-                if best_hit is None or length_squared < best_length_squared:
-                    best_length_squared = length_squared
-                    best_obj = obj
-                    best_hit = hit_world
+        # Coordinates within region are global coordinates - region location
+        region_coord = settings.mouse_x - region.x, settings.mouse_y - region.y
 
-    if best_hit is not None:
-        empty = bpy.data.objects.new("empty", None)
-        empty.empty_display_type = "SPHERE"
-        empty.empty_display_size = 0.1
-        empty.location = best_hit
+        # get the ray from the viewport and mouse
+        view_vector = view3d_utils.region_2d_to_vector_3d(region, rv3d, region_coord)
+        ray_origin = view3d_utils.region_2d_to_origin_3d(region, rv3d, region_coord)
+
+        ray_target = ray_origin + view_vector
+
+        # cast rays and find the closest object
+        best_length_squared = -1.0
+        best_hit = None
+
+        for obj, matrix in visible_objects_and_duplis(context):
+            if obj.type == 'MESH':
+                hit, normal, face_index = obj_ray_cast(ray_origin, ray_target, obj, matrix)
+                if hit is not None:
+                    hit_world = matrix @ hit
+                    # scene.cursor.location = hit_world
+                    length_squared = (hit_world - ray_origin).length_squared
+                    if best_hit is None or length_squared < best_length_squared:
+                        best_length_squared = length_squared
+                        best_hit = hit_world
+
+        if best_hit is not None:
+            empty = bpy.data.objects.new("empty", None)
+            empty.empty_display_type = "SPHERE"
+            empty.empty_display_size = 0.1
+            empty.location = best_hit
+            
+            image_collection = settings.current_image_collection
+            point_collection = image_collection.children[settings.points_collection_name]
+            point_collection.objects.link(empty)
         
-        image_collection = settings.current_image_collection
-        point_collection = image_collection.children[settings.points_collection_name]
-        point_collection.objects.link(empty)
+        return {'FINISHED'}
 
 
-def add_clip_marker(context, event):
-    scene = context.scene
-    region = context.region
-    rv3d = context.region_data
-    region_coord = event.mouse_region_x, event.mouse_region_y
-    view_coord = region.view2d.region_to_view(region_coord[0], region_coord[1])
-    settings = context.scene.match_settings
-    print(f"coords: {view_coord[0]}, {view_coord[1]}")
+class IMAGE_OT_add_2d_point(bpy.types.Operator):
+    """Adds point to clip editor corresponding to global mouse position in settings"""
 
-    # Only add markers if lie within the bounds of the image so (0, 1)
-    if view_coord[0] >= 0 and view_coord[0] <= 1 and view_coord[1] >= 0 and view_coord[1] <= 1:
-        current_movie_clip = context.edit_movieclip
-        current_frame = context.scene.frame_current
+    bl_idname = "imagematches.add_2d_point"
+    bl_label = "Add 2D point"
+    # bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        """Add point to clip editor"""
+
+        settings = context.scene.match_settings
+        region = context.region
+
+        # Coordinates within region are global coordinates - region location
+        region_coord = settings.mouse_x - region.x, settings.mouse_y - region.y
+
+        # region_coord = event.mouse_region_x, event.mouse_region_y
+        # Coordinates within image - 0 to 1 on each axis
+        view_coord = region.view2d.region_to_view(region_coord[0], region_coord[1])
+
+        # Only add markers if lie within the bounds of the image so (0, 1)
+        if 0 <= view_coord[0] <= 1 and 0 <= view_coord[1] <= 1:
+            current_movie_clip = context.edit_movieclip
+            current_frame = context.scene.frame_current
+            
+            track = current_movie_clip.tracking.tracks.new(name="", frame=current_frame)
+            track.markers[0].co = Vector((view_coord[0], view_coord[1]))
         
-        track = current_movie_clip.tracking.tracks.new(name="", frame=current_frame)
-        track.markers[0].co = Vector((view_coord[0], view_coord[1]))
+        return {'FINISHED'}
 
 
-# Can check for currently active handlers with 
-# bpy.context.window_manager.operators.keys() in blender terminal??
 class IMAGE_OT_add_points(bpy.types.Operator):
-    """Add points"""
+    """Add points in clip editor or 3D view"""
+
     bl_idname = "imagematches.add_points"
     bl_label = "Add points"
     # bl_options = {'REGISTER', 'UNDO'}
+    window_clip = None
+    area_clip = None
+    region_clip = None
+    window_3d = None
+    area_3d = None
+    region_3d = None
 
     def modal(self, context, event):
+        settings = context.scene.match_settings
+        
         if event.type in {'MIDDLEMOUSE', 'WHEELUPMOUSE', 'WHEELDOWNMOUSE'}:
             # allow navigation
             return {'PASS_THROUGH'}
-        elif event.type == 'LEFTMOUSE':
-            # Only place points on mouse press, not release
-            if event.value == "PRESS":
-                if context.space_data.type == "VIEW_3D":
-                    ray_cast(context, event)
-                else:
-                    add_clip_marker(context, event)
+        elif event.type == 'LEFTMOUSE' and event.value == "PRESS":
+            # Only places points on mouse press, not release
+
+            coord = event.mouse_x, event.mouse_y
+
+            # If clicked within clip editor, then add marker
+            if coordinates_within_region_bounds(self.region_clip, coord):
+                with context.temp_override(window=self.window_clip, area=self.area_clip, region=self.region_clip):
+                    settings.mouse_x = coord[0]
+                    settings.mouse_y = coord[1]
+                    bpy.ops.imagematches.add_2d_point('EXEC_DEFAULT')
+            
+            # If clicked within 3D view, then add point
+            elif coordinates_within_region_bounds(self.region_3d, coord):
+                with context.temp_override(window=self.window_3d, area=self.area_3d, region=self.region_3d):
+                    settings.mouse_x = coord[0]
+                    settings.mouse_y = coord[1]
+                    bpy.ops.imagematches.add_3d_point('EXEC_DEFAULT')
+
             return {'RUNNING_MODAL'}
         elif event.type in {'RIGHTMOUSE', 'ESC'}:
+            settings.add_points_enabled = False
             return {'CANCELLED'}
 
         return {'RUNNING_MODAL'}
 
     def invoke(self, context, event):
-        if context.space_data.type == 'VIEW_3D' or context.space_data.type == "CLIP_EDITOR":
-            print("adding modal handler")
-            context.window_manager.modal_handler_add(self)
-            return {'RUNNING_MODAL'}
-        else:
-            self.report({'WARNING'}, "Active space must be View3d or Clip Editor")
+        settings = context.scene.match_settings
+
+        # Find clip editor area
+        self.window_clip, self.area_clip, self.region_clip = find_area(context, "CLIP_EDITOR")
+        if self.area_clip is None: 
+            self.report({'WARNING'}, "No clip editor open")
+            settings.add_points_enabled = False
             return {'CANCELLED'}
+
+        # Find 3D view area
+        self.window_3d, self.area_3d, self.region_3d = find_area(context, "VIEW_3D")
+        if self.area_3d is None: 
+            self.report({'WARNING'}, "No 3D view open")
+            settings.add_points_enabled = False
+            return {'CANCELLED'}
+
+        context.window_manager.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
+        
+        
+def set_add_points(self, context):
+
+    if self.add_points_enabled:
+        bpy.ops.imagematches.add_points('INVOKE_DEFAULT')
+        
 
