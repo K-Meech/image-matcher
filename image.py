@@ -18,7 +18,7 @@ class IMAGE_OT_add_image(bpy.types.Operator):
 
     def execute(self, context):
         settings = context.scene.match_settings
-        collection_name = settings.collection
+        collection_name = settings.image_match_collection
 
         # Create collection to hold all image match results 
         # (if doesn't already exist)
@@ -253,8 +253,13 @@ class IMAGE_OT_add_3d_point(bpy.types.Operator):
                 empty.location = best_hit
                 
                 image_collection = settings.current_image_collection
-                point_collection = image_collection.children[settings.points_collection_name]
+                point_collection = image_collection.children[settings.points_3d_collection_name]
                 point_collection.objects.link(empty)
+
+                
+        point = settings.current_points.add()
+        point.id = 1
+        point.is_point_3d_initialised = True
 
         return {'FINISHED'}
     
@@ -284,7 +289,7 @@ class IMAGE_OT_delete_3d_point(bpy.types.Operator):
         settings = context.scene.match_settings
 
         image_collection = settings.current_image_collection
-        point_collection = image_collection.children[settings.points_collection_name]
+        point_collection = image_collection.children[settings.points_3d_collection_name]
 
         # Coordinates within region are global coordinates - region location
         region_coord = self.point_x - region.x, self.point_y - region.y

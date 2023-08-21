@@ -22,9 +22,27 @@ from .image import IMAGE_OT_add_image, IMAGE_OT_swap_image, \
 
 
 def poll_image_collection(self, object):
-    # Only allow selection of collections inside the result collection
-    result_collection = bpy.data.collections[self.collection]
+    """Only allow selection of collections inside the result collection"""
+    result_collection = bpy.data.collections[self.image_match_collection]
     return object.name in result_collection.children
+
+class PointMatch(bpy.types.PropertyGroup):
+    """Group of properties representing a 2D-3D point match"""
+
+    id: bpy.props.IntProperty(
+           name="Point id",
+           description="Id of this point match",
+           default=1)
+
+    is_point_2d_initialised: bpy.props.BoolProperty(
+        name="2D point",
+        description="Is 2D point initialised?",
+        default=False)
+    
+    is_point_3d_initialised: bpy.props.BoolProperty(
+        name="3D point",
+        description="Is 3D point initialised?",
+        default=False)
 
 class ImageMatchSettings(bpy.types.PropertyGroup):
 
@@ -39,9 +57,14 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         description="3D model",
         type=bpy.types.Object)
 
-    pnp_points_collection: bpy.props.PointerProperty(
+    points_3d_collection: bpy.props.PointerProperty(
         name="",
         type=bpy.types.Collection)
+    
+    points_3d_collection_name: bpy.props.StringProperty(
+        name="3D points Collection",
+        description="Collection for 3D points",
+        default="points-3d")
     
     pnp_intrinsics_focal_length: bpy.props.BoolProperty(
         name="Focal Length",
@@ -79,15 +102,10 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         description="Define the import filepath for image",
         subtype="FILE_PATH")
     
-    collection: bpy.props.StringProperty(
+    image_match_collection: bpy.props.StringProperty(
         name="Image Match Collection",
         description="Collection for image match results",
         default="image-match")
-    
-    points_collection_name: bpy.props.StringProperty(
-        name="3D points Collection",
-        description="Collection for 3D points",
-        default="points-3d")
     
     current_image_collection: bpy.props.PointerProperty(
         name="",
@@ -108,8 +126,38 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         update=set_delete_points
     )
 
+    active_point_index: bpy.props.IntProperty(
+        name = "Active point index",
+        description = "Active point index",
+        default = 0
+    )
 
-class AddImagePanel(bpy.types.Panel):
+    current_points: bpy.props.CollectionProperty(
+        type = PointMatch,
+        name = "Current points",
+        description ="Current points")
+    
+class POINT_UL_UI(bpy.types.UIList):
+    """UI for point list"""
+
+    def draw_item(self, context, layout, data, point, icon, active_data,
+                  active_propname, index):
+        icon = "EMPTY_DATA"
+
+        row = layout.row()
+
+        col = layout.column()
+        col.label(text=f"{point.id}", icon=icon)
+
+        col = layout.column()
+        col.enabled = False
+        col.prop(point, "is_point_2d_initialised")
+        
+        col = layout.column()
+        col.enabled = False
+        col.prop(point, "is_point_3d_initialised")
+
+class ImagePanel(bpy.types.Panel):
     bl_label = "Add / Change Image"
     bl_idname = "VIEW3D_PT_AddImage"
     bl_space_type = "CLIP_EDITOR"
@@ -169,6 +217,12 @@ class PointsPanel(bpy.types.Panel):
         # row = layout.row()
         row.prop(settings, 'delete_points_enabled', text=delete_txt, icon=delete_icon, toggle=True)
 
+        row = layout.row()
+        row.template_list("POINT_UL_UI", "Point_List", settings, "current_points", settings, "active_point_index")
+
+        # row = layout.row()
+        # row.template_list("POINTS", "", settings.points_3d_collection, "current_points", settings.points_3d_collection.all_objects, "active_index")
+
 
 class PnpPanel(bpy.types.Panel):
     bl_label = "PNP"
@@ -182,7 +236,7 @@ class PnpPanel(bpy.types.Panel):
         settings = context.scene.match_settings
 
         col = layout.column(heading="3D Points", align=True)
-        col.prop(settings, "pnp_points_collection")
+        col.prop(settings, "points_3d_collection")
         
         col = layout.column(heading="Calibrate", align=True)
         col.prop(settings, "pnp_intrinsics_focal_length", text="Focal Length")
@@ -293,11 +347,13 @@ def register_classes(unregister=False):
     # as they are dependent on opencv installation
     from .pnp import PNP_OT_calibrate_camera, PNP_OT_pose_camera
 
-    classes = [ImageMatchSettings,
+    classes = [PointMatch,
+               POINT_UL_UI,
+               ImageMatchSettings,
                OBJECT_OT_export_matches,
                PNP_OT_calibrate_camera,
                PNP_OT_pose_camera,
-               AddImagePanel,
+               ImagePanel,
                PointsPanel,
                PnpPanel,
                ExportPanel,
