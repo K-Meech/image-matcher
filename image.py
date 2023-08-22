@@ -213,6 +213,14 @@ def find_next_point(current_points, is2D):
                 return point
             
     return current_points.add()
+
+
+def delete_point_if_empty(current_points, index):
+    """Delete point at index in current_points if it has no 2D or 3D
+    point inside"""
+    point = current_points[index]
+    if not point.is_point_2d_initialised and not point.is_point_3d_initialised:
+        current_points.remove(index)
     
 
 class IMAGE_OT_add_3d_point(bpy.types.Operator):
@@ -305,40 +313,47 @@ class IMAGE_OT_delete_3d_point(bpy.types.Operator):
         settings = context.scene.match_settings
 
         image_collection = settings.current_image_collection
-        point_collection = image_collection.children[settings.points_3d_collection_name]
+        current_points = settings.current_points
 
         # Coordinates within region are global coordinates - region location
         region_coord = self.point_x - region.x, self.point_y - region.y
 
-        for empty, matrix in empties_in_collection(point_collection):
-            # Coordinate of empty in 2D region
-            empty_region_coord = view3d_utils.location_3d_to_region_2d(region, rv3d, empty.location)
+        for i in range(len(current_points)):
+            point = current_points[i]
+            if point.is_point_3d_initialised:
+                empty = point.point_3d
 
-            # Get radius of the empty sphere (in 2D coords).
-            # First, get vector of current view in 3D space. Then add a vector 
-            # of length == empty display size in a direction orthogonal to 
-            # this (i.e. get a point on the edge of the sphere, in the 3D 
-            # plane corresponding to the current 2D view). Convert this back to
-            # 2D space and get distance between this and the empty centre.
-            view_vector = view3d_utils.region_2d_to_vector_3d(region, rv3d, empty_region_coord)
-            orthogonal_vector = view_vector.orthogonal()
-            orthogonal_vector = orthogonal_vector.normalized()
-            empty_edge_point = empty.location + (orthogonal_vector*empty.empty_display_size)
+                # Coordinate of empty in 2D region
+                empty_region_coord = view3d_utils.location_3d_to_region_2d(region, rv3d, empty.location)
 
-            empty_edge_region_coord = view3d_utils.location_3d_to_region_2d(region, rv3d, empty_edge_point)
-            region_radius = (empty_region_coord - empty_edge_region_coord).length
+                # Get radius of the empty sphere (in 2D coords).
+                # First, get vector of current view in 3D space. Then add a vector 
+                # of length == empty display size in a direction orthogonal to 
+                # this (i.e. get a point on the edge of the sphere, in the 3D 
+                # plane corresponding to the current 2D view). Convert this back to
+                # 2D space and get distance between this and the empty centre.
+                view_vector = view3d_utils.region_2d_to_vector_3d(region, rv3d, empty_region_coord)
+                orthogonal_vector = view_vector.orthogonal()
+                orthogonal_vector = orthogonal_vector.normalized()
+                empty_edge_point = empty.location + (orthogonal_vector*empty.empty_display_size)
 
-            # Use a bounding box of width == diameter of empty sphere to detect
-            # clicks inside
-            empty_min_x = empty_region_coord[0] - region_radius
-            empty_max_x = empty_region_coord[0] + region_radius
-            empty_min_y = empty_region_coord[1] - region_radius
-            empty_max_y = empty_region_coord[1] + region_radius 
+                empty_edge_region_coord = view3d_utils.location_3d_to_region_2d(region, rv3d, empty_edge_point)
+                region_radius = (empty_region_coord - empty_edge_region_coord).length
 
-            if empty_min_x <= region_coord[0] <= empty_max_x and \
-                empty_min_y <= region_coord[1] <= empty_max_y:
-                bpy.data.objects.remove(empty, do_unlink=True)
-                break
+                # Use a bounding box of width == diameter of empty sphere to detect
+                # clicks inside
+                empty_min_x = empty_region_coord[0] - region_radius
+                empty_max_x = empty_region_coord[0] + region_radius
+                empty_min_y = empty_region_coord[1] - region_radius
+                empty_max_y = empty_region_coord[1] + region_radius 
+
+                if empty_min_x <= region_coord[0] <= empty_max_x and \
+                    empty_min_y <= region_coord[1] <= empty_max_y:
+                    bpy.data.objects.remove(empty, do_unlink=True)
+
+                    point.is_point_3d_initialised = False
+                    delete_point_if_empty(current_points, i)
+                    break
         
         return {'FINISHED'}
 
@@ -415,6 +430,7 @@ class IMAGE_OT_delete_2d_point(bpy.types.Operator):
         # Deselect any currently active markers
         bpy.ops.clip.select_all(action='DESELECT')
 
+        settings = context.scene.match_settings
         region = context.region
         # Coordinates within region are global coordinates - region location
         region_coord = self.point_x - region.x, self.point_y - region.y
@@ -425,21 +441,32 @@ class IMAGE_OT_delete_2d_point(bpy.types.Operator):
         # Only delete if within the bounds of the image so (0, 1)
         if 0 <= view_coord[0] <= 1 and 0 <= view_coord[1] <= 1:
             current_movie_clip = context.edit_movieclip
+            tracks = current_movie_clip.tracking.objects[0].tracks
+            current_points = settings.current_points
 
-            for track in current_movie_clip.tracking.objects[0].tracks:
-                marker = track.markers[0]
-                marker_min_x = marker.co[0] + marker.pattern_bound_box[0][0]
-                marker_max_x = marker.co[0] + marker.pattern_bound_box[1][0]
-                marker_min_y = marker.co[1] + marker.pattern_bound_box[0][1]
-                marker_max_y = marker.co[1] + marker.pattern_bound_box[1][1]
+            for i in range(len(current_points)):
+                point = current_points[i]
+                if point.is_point_2d_initialised: 
+                    track = tracks[point.point_2d]
 
-                if marker_min_x <= view_coord[0] <= marker_max_x and \
-                    marker_min_y <= view_coord[1] <= marker_max_y:
-                    track.select = True
-                    # Couldn't see a simple way to delete a track directly,
-                    # so use an ops call
-                    bpy.ops.clip.delete_track(False)
-                    break
+                    marker = track.markers[0]
+                    marker_min_x = marker.co[0] + marker.pattern_bound_box[0][0]
+                    marker_max_x = marker.co[0] + marker.pattern_bound_box[1][0]
+                    marker_min_y = marker.co[1] + marker.pattern_bound_box[0][1]
+                    marker_max_y = marker.co[1] + marker.pattern_bound_box[1][1]
+
+                    if marker_min_x <= view_coord[0] <= marker_max_x and \
+                        marker_min_y <= view_coord[1] <= marker_max_y:
+                        track.select = True
+                        # Couldn't see a simple way to delete a track directly,
+                        # so use an ops call
+                        bpy.ops.clip.delete_track(False)
+
+                        point.is_point_2d_initialised = False
+                        point.point_2d = ""
+                        delete_point_if_empty(current_points, i)
+
+                        break
         
         return {'FINISHED'}
     
