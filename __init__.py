@@ -26,13 +26,44 @@ def poll_image_collection(self, object):
     result_collection = bpy.data.collections[self.image_match_collection]
     return object.name in result_collection.children
 
+
+def update_active_point_match(self, context):
+    active_point_index = self.active_point_index
+    active_point_match = self.current_points[active_point_index]
+
+    # Select the current 3d point
+    bpy.ops.object.select_all(action='DESELECT')
+    if active_point_match.is_point_3d_initialised:
+        active_point_match.point_3d.select_set(True)
+        bpy.context.view_layer.objects.active = active_point_match.point_3d
+
+    # Select the current 2d point
+    bpy.ops.clip.select_all(action='DESELECT')
+    if active_point_match.is_point_2d_initialised:
+        track_name = active_point_match.point_2d
+        current_movie_clip = context.edit_movieclip  
+        tracks = current_movie_clip.tracking.objects[0].tracks
+        for track in tracks:
+            if track.name == track_name:
+                track.select = True
+                tracks.active = track
+                break
+
+
+def force_redraw(self, context):
+    """This empty update function makes Blender re-draw the panel, which 
+    ensures that as 3D points are added, they immediately show up in the 
+    UI list"""
+    pass
+            
+
 class PointMatch(bpy.types.PropertyGroup):
     """Group of properties representing a 2D-3D point match"""
 
-    id: bpy.props.IntProperty(
-           name="Point id",
-           description="Id of this point match",
-           default=1)
+    # id: bpy.props.IntProperty(
+    #        name="Point id",
+    #        description="Id of this point match",
+    #        default=1)
 
     is_point_2d_initialised: bpy.props.BoolProperty(
         name="2D point",
@@ -42,7 +73,24 @@ class PointMatch(bpy.types.PropertyGroup):
     is_point_3d_initialised: bpy.props.BoolProperty(
         name="3D point",
         description="Is 3D point initialised?",
-        default=False)
+        default=False,
+        update=force_redraw)
+    
+    point_3d: bpy.props.PointerProperty(
+        name="3D point",
+        type=bpy.types.Object)
+    
+    # Name of track for this 2D point. Don't seem to be
+    # able to directly store a pointer to the track
+    point_2d: bpy.props.StringProperty(
+        name="Name of point 2D track",
+        default="",
+        description="Name of track for this 2D point")
+    
+    point_3d: bpy.props.PointerProperty(
+        name="3D point",
+        type=bpy.types.Object)
+
 
 class ImageMatchSettings(bpy.types.PropertyGroup):
 
@@ -129,7 +177,8 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
     active_point_index: bpy.props.IntProperty(
         name = "Active point index",
         description = "Active point index",
-        default = 0
+        default = 0,
+        update = update_active_point_match
     )
 
     current_points: bpy.props.CollectionProperty(
@@ -137,6 +186,7 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         name = "Current points",
         description ="Current points")
     
+
 class POINT_UL_UI(bpy.types.UIList):
     """UI for point list"""
 
@@ -147,15 +197,32 @@ class POINT_UL_UI(bpy.types.UIList):
         row = layout.row()
 
         col = layout.column()
-        col.label(text=f"{point.id}", icon=icon)
+        col.label(text="", icon=icon)
 
         col = layout.column()
         col.enabled = False
-        col.prop(point, "is_point_2d_initialised")
+        col.prop(point, "is_point_2d_initialised", text="2D")
         
         col = layout.column()
         col.enabled = False
+        col.prop(point, "is_point_3d_initialised", text="3D")
+
+        col = layout.column()
+        if point.is_point_2d_initialised:
+            col.enabled = True
+        else:
+            col.enabled = False
+        # DELETE 2D
         col.prop(point, "is_point_3d_initialised")
+
+        col = layout.column()
+        if point.is_point_3d_initialised:
+            col.enabled = True
+        else:
+            col.enabled = False
+        # DELETE 3D
+        col.prop(point, "is_point_3d_initialised")
+
 
 class ImagePanel(bpy.types.Panel):
     bl_label = "Add / Change Image"

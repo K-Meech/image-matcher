@@ -52,7 +52,7 @@ class IMAGE_OT_add_image(bpy.types.Operator):
         result_collection.children.link(image_collection)
 
         # Collection for 3D points
-        point_collection = bpy.data.collections.new(settings.points_collection_name)
+        point_collection = bpy.data.collections.new(settings.points_3d_collection_name)
         image_collection.children.link(point_collection)
 
         camera_data = bpy.data.cameras.new(name='Camera')
@@ -198,7 +198,22 @@ def obj_ray_cast(ray_origin, ray_target, obj, matrix):
         return location, normal, face_index
     else:
         return None, None, None
+    
 
+def find_next_point(current_points, is2D):
+    """Find the next point to update i.e. first in the list with
+    a missing 2D or 3D point. If none, make a new point.
+    Can likely be made more efficient as currently this loops 
+    through the list from the start every time"""
+    if len(current_points) > 0:
+        for point in current_points:
+            if is2D and not point.is_point_2d_initialised:
+                return point
+            elif not is2D and not point.is_point_3d_initialised:
+                return point
+            
+    return current_points.add()
+    
 
 class IMAGE_OT_add_3d_point(bpy.types.Operator):
     """Adds point to 3D view corresponding to given global point coordinates"""
@@ -256,10 +271,11 @@ class IMAGE_OT_add_3d_point(bpy.types.Operator):
                 point_collection = image_collection.children[settings.points_3d_collection_name]
                 point_collection.objects.link(empty)
 
-                
-        point = settings.current_points.add()
-        point.id = 1
-        point.is_point_3d_initialised = True
+                # Update record of 2D-3D point correspondances
+                current_points = settings.current_points
+                next_point = find_next_point(current_points, False)
+                next_point.is_point_3d_initialised = True
+                next_point.point_3d = empty
 
         return {'FINISHED'}
     
@@ -365,6 +381,13 @@ class IMAGE_OT_add_2d_point(bpy.types.Operator):
             track = tracks.new(name="", frame=current_frame)
             track.markers[0].co = Vector((view_coord[0], view_coord[1]))
             track.lock = True
+
+            # Update record of 2D-3D point correspondances
+            settings = context.scene.match_settings
+            current_points = settings.current_points
+            next_point = find_next_point(current_points, True)                  
+            next_point.is_point_2d_initialised = True
+            next_point.point_2d = track.name
         
         return {'FINISHED'}
     
