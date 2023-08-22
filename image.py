@@ -442,75 +442,14 @@ class IMAGE_OT_delete_2d_point(bpy.types.Operator):
                     break
         
         return {'FINISHED'}
-
-
-class IMAGE_OT_add_points(bpy.types.Operator):
-    """Add points in clip editor or 3D view"""
-
-    bl_idname = "imagematches.add_points"
-    bl_label = "Add points"
-    # bl_options = {'REGISTER', 'UNDO'}
-    window_clip = None
-    area_clip = None
-    region_clip = None
-    window_3d = None
-    area_3d = None
-    region_3d = None
-
-    def modal(self, context, event):
-        settings = context.scene.match_settings
-        
-        if event.type in {'MIDDLEMOUSE', 'WHEELUPMOUSE', 'WHEELDOWNMOUSE'}:
-            # allow navigation
-            return {'PASS_THROUGH'}
-        elif event.type == 'LEFTMOUSE' and event.value == "PRESS":
-            # Only places points on mouse press, not release
-
-            coord = event.mouse_x, event.mouse_y
-
-            # If clicked within clip editor, then add marker
-            if coordinates_within_region_bounds(self.region_clip, coord):
-                with context.temp_override(window=self.window_clip, area=self.area_clip, region=self.region_clip):
-                    bpy.ops.imagematches.add_2d_point('EXEC_DEFAULT', point_x=coord[0], point_y=coord[1])
-            
-            # If clicked within 3D view, then add point
-            elif coordinates_within_region_bounds(self.region_3d, coord):
-                with context.temp_override(window=self.window_3d, area=self.area_3d, region=self.region_3d):
-                    bpy.ops.imagematches.add_3d_point('EXEC_DEFAULT', point_x=coord[0], point_y=coord[1])
-
-            return {'RUNNING_MODAL'}
-        elif event.type in {'RIGHTMOUSE', 'ESC'}:
-            settings.add_points_enabled = False
-            return {'CANCELLED'}
-
-        return {'RUNNING_MODAL'}
-
-    def invoke(self, context, event):
-        settings = context.scene.match_settings
-
-        # Find clip editor area
-        self.window_clip, self.area_clip, self.region_clip = find_area(context, "CLIP_EDITOR")
-        if self.area_clip is None: 
-            self.report({'WARNING'}, "No clip editor open")
-            settings.add_points_enabled = False
-            return {'CANCELLED'}
-
-        # Find 3D view area
-        self.window_3d, self.area_3d, self.region_3d = find_area(context, "VIEW_3D")
-        if self.area_3d is None: 
-            self.report({'WARNING'}, "No 3D view open")
-            settings.add_points_enabled = False
-            return {'CANCELLED'}
-
-        context.window_manager.modal_handler_add(self)
-        return {'RUNNING_MODAL'}
     
 
-class IMAGE_OT_delete_points(bpy.types.Operator):
-    """Delete points in clip editor or 3D view"""
+class IMAGE_OT_point_mode(bpy.types.Operator):
+    """Enter point mode - to allow adding/deleting points in the
+      clip editor or 3D view"""
 
-    bl_idname = "imagematches.delete_points"
-    bl_label = "Delete points"
+    bl_idname = "imagematches.point_mode"
+    bl_label = "Point mode"
     # bl_options = {'REGISTER', 'UNDO'}
     window_clip = None
     area_clip = None
@@ -518,6 +457,7 @@ class IMAGE_OT_delete_points(bpy.types.Operator):
     window_3d = None
     area_3d = None
     region_3d = None
+    ctrl_pressed = False
 
     def modal(self, context, event):
         settings = context.scene.match_settings
@@ -525,24 +465,40 @@ class IMAGE_OT_delete_points(bpy.types.Operator):
         if event.type in {'MIDDLEMOUSE', 'WHEELUPMOUSE', 'WHEELDOWNMOUSE'}:
             # allow navigation
             return {'PASS_THROUGH'}
+        
+        elif (event.type == "LEFT_CTRL" and event.value == "PRESS") or \
+            (event.type == "RIGHT_CTRL" and event.value == "PRESS"):
+            self.ctrl_pressed = True
+
+        elif (event.type == "LEFT_CTRL" and event.value == "RELEASE") or \
+            (event.type == "RIGHT_CTRL" and event.value == "RELEASE"):
+            self.ctrl_pressed = False
+
         elif event.type == 'LEFTMOUSE' and event.value == "PRESS":
             # Only places points on mouse press, not release
 
             coord = event.mouse_x, event.mouse_y
 
-            # If clicked within clip editor, then add marker
+            # If clicked within clip editor, then add/delete marker
             if coordinates_within_region_bounds(self.region_clip, coord):
                 with context.temp_override(window=self.window_clip, area=self.area_clip, region=self.region_clip):
-                    bpy.ops.imagematches.delete_2d_point('EXEC_DEFAULT', point_x=coord[0], point_y=coord[1])
+                    if not self.ctrl_pressed:
+                        bpy.ops.imagematches.add_2d_point('EXEC_DEFAULT', point_x=coord[0], point_y=coord[1])
+                    else:
+                        bpy.ops.imagematches.delete_2d_point('EXEC_DEFAULT', point_x=coord[0], point_y=coord[1])
             
-            # If clicked within 3D view, then add point
+            # If clicked within 3D view, then add/delete point
             elif coordinates_within_region_bounds(self.region_3d, coord):
                 with context.temp_override(window=self.window_3d, area=self.area_3d, region=self.region_3d):
-                    bpy.ops.imagematches.delete_3d_point('EXEC_DEFAULT', point_x=coord[0], point_y=coord[1])
+                    if not self.ctrl_pressed:
+                        bpy.ops.imagematches.add_3d_point('EXEC_DEFAULT', point_x=coord[0], point_y=coord[1])
+                    else:
+                        bpy.ops.imagematches.delete_3d_point('EXEC_DEFAULT', point_x=coord[0], point_y=coord[1])
 
             return {'RUNNING_MODAL'}
+        
         elif event.type in {'RIGHTMOUSE', 'ESC'}:
-            settings.delete_points_enabled = False
+            settings.point_mode_enabled = False
             return {'CANCELLED'}
 
         return {'RUNNING_MODAL'}
@@ -554,27 +510,24 @@ class IMAGE_OT_delete_points(bpy.types.Operator):
         self.window_clip, self.area_clip, self.region_clip = find_area(context, "CLIP_EDITOR")
         if self.area_clip is None: 
             self.report({'WARNING'}, "No clip editor open")
-            settings.delete_points_enabled = False
+            settings.point_mode_enabled = False
             return {'CANCELLED'}
 
         # Find 3D view area
         self.window_3d, self.area_3d, self.region_3d = find_area(context, "VIEW_3D")
         if self.area_3d is None: 
             self.report({'WARNING'}, "No 3D view open")
-            settings.delete_points_enabled = False
+            settings.point_mode_enabled = False
             return {'CANCELLED'}
 
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
-        
-
-def set_delete_points(self, context):
-    if self.delete_points_enabled:
-        bpy.ops.imagematches.delete_points('INVOKE_DEFAULT')
 
 
-def set_add_points(self, context):
-    if self.add_points_enabled:
-        bpy.ops.imagematches.add_points('INVOKE_DEFAULT')
+def set_point_mode(self, context):
+    if self.point_mode_enabled:
+        bpy.ops.imagematches.point_mode('INVOKE_DEFAULT')
+
+
         
 

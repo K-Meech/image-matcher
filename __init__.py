@@ -17,8 +17,8 @@ from collections import namedtuple
 from .export import OBJECT_OT_export_matches
 from . import dependency
 from .image import IMAGE_OT_add_image, IMAGE_OT_swap_image, \
-    IMAGE_OT_add_points, IMAGE_OT_add_3d_point, IMAGE_OT_add_2d_point, \
-        IMAGE_OT_delete_points, IMAGE_OT_delete_3d_point, IMAGE_OT_delete_2d_point, set_add_points, set_delete_points
+    IMAGE_OT_point_mode, IMAGE_OT_add_3d_point, IMAGE_OT_add_2d_point, \
+        IMAGE_OT_delete_3d_point, IMAGE_OT_delete_2d_point, set_point_mode
 
 
 def poll_image_collection(self, object):
@@ -160,18 +160,11 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         type=bpy.types.Collection,
         poll=poll_image_collection)
     
-    add_points_enabled: bpy.props.BoolProperty(
-        name="Add points enabled",
-        description="Add points enabled",
+    point_mode_enabled: bpy.props.BoolProperty(
+        name="Point mode enabled",
+        description="Point mode enabled",
         default=False,
-        update=set_add_points
-    )
-
-    delete_points_enabled: bpy.props.BoolProperty(
-        name="Delete points enabled",
-        description="Delete points enabled",
-        default=False,
-        update=set_delete_points
+        update=set_point_mode
     )
 
     active_point_index: bpy.props.IntProperty(
@@ -264,31 +257,18 @@ class PointsPanel(bpy.types.Panel):
         row.label(text="3D model :")
         row.prop(settings, "model", text="")
 
-        if not settings.add_points_enabled:
-            add_icon = "PLAY"
-            add_txt = 'Add points'
+        if not settings.point_mode_enabled:
+            mode_icon = "PLAY"
+            mode_txt = 'Point mode'
         else:
-            add_icon = "PAUSE"
-            add_txt = 'Right click or ESC to cancel'
+            mode_icon = "PAUSE"
+            mode_txt = 'Right click or ESC to cancel'
         
         row = layout.row(align=True)
-        row.prop(settings, 'add_points_enabled', text=add_txt, icon=add_icon, toggle=True)
-
-        if not settings.delete_points_enabled:
-            delete_icon = "PLAY"
-            delete_txt = 'Delete points'
-        else:
-            delete_icon = "PAUSE"
-            delete_txt = 'Right click or ESC to cancel'
-        
-        # row = layout.row()
-        row.prop(settings, 'delete_points_enabled', text=delete_txt, icon=delete_icon, toggle=True)
+        row.prop(settings, 'point_mode_enabled', text=mode_txt, icon=mode_icon, toggle=True)
 
         row = layout.row()
         row.template_list("POINT_UL_UI", "Point_List", settings, "current_points", settings, "active_point_index")
-
-        # row = layout.row()
-        # row.template_list("POINTS", "", settings.points_3d_collection, "current_points", settings.points_3d_collection.all_objects, "active_index")
 
 
 class PnpPanel(bpy.types.Panel):
@@ -426,10 +406,9 @@ def register_classes(unregister=False):
                ExportPanel,
                IMAGE_OT_add_image,
                IMAGE_OT_swap_image,
-               IMAGE_OT_add_points,
+               IMAGE_OT_point_mode,
                IMAGE_OT_add_3d_point,
                IMAGE_OT_add_2d_point,
-               IMAGE_OT_delete_points,
                IMAGE_OT_delete_3d_point,
                IMAGE_OT_delete_2d_point
                ]
