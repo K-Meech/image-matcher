@@ -23,8 +23,12 @@ from .image import IMAGE_OT_add_image, IMAGE_OT_swap_image, \
 
 def poll_image_collection(self, object):
     """Only allow selection of collections inside the result collection"""
-    result_collection = bpy.data.collections[self.image_match_collection]
+    result_collection = self.image_match_collection
     return object.name in result_collection.children
+
+
+def update_current_image(self, context):
+    bpy.ops.imagematches.swap_image('INVOKE_DEFAULT')
 
 
 def update_active_point_match(self, context):
@@ -104,14 +108,32 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         name="3D model",
         description="3D model",
         type=bpy.types.Object)
+    
+    image_match_collection: bpy.props.PointerProperty(
+        name="Image match collection",
+        description="Collection for image match results",
+        type=bpy.types.Collection)
+    
+    image_match_collection_name: bpy.props.StringProperty(
+        name="Image match collection name",
+        description="Name of collection for image match results",
+        default="image-match")
+    
+    current_image_collection: bpy.props.PointerProperty(
+        name="Current image collection",
+        description="Collection for current image",
+        type=bpy.types.Collection,
+        poll=poll_image_collection,
+        update=update_current_image)
 
     points_3d_collection: bpy.props.PointerProperty(
-        name="",
+        name="3D points collection",
+        description="Collection for 3D points of current image",
         type=bpy.types.Collection)
     
     points_3d_collection_name: bpy.props.StringProperty(
-        name="3D points Collection",
-        description="Collection for 3D points",
+        name="3D points collection name",
+        description="Name for collection of 3D points",
         default="points-3d")
     
     pnp_intrinsics_focal_length: bpy.props.BoolProperty(
@@ -149,16 +171,6 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         default="",
         description="Define the import filepath for image",
         subtype="FILE_PATH")
-    
-    image_match_collection: bpy.props.StringProperty(
-        name="Image Match Collection",
-        description="Collection for image match results",
-        default="image-match")
-    
-    current_image_collection: bpy.props.PointerProperty(
-        name="",
-        type=bpy.types.Collection,
-        poll=poll_image_collection)
     
     point_mode_enabled: bpy.props.BoolProperty(
         name="Point mode enabled",
@@ -236,10 +248,9 @@ class ImagePanel(bpy.types.Panel):
         row.operator("imagematches.add_image")
 
         row = layout.row()
-        row.label(text="Change image:")
-        row.prop(settings, "current_image_collection")
+        row.label(text="Current image:")
         row = layout.row()
-        row.operator("imagematches.swap_image")
+        row.prop(settings, "current_image_collection", text="")
 
 
 class PointsPanel(bpy.types.Panel):
@@ -248,6 +259,11 @@ class PointsPanel(bpy.types.Panel):
     bl_space_type = "CLIP_EDITOR"
     bl_region_type = "TOOLS"
     bl_category = "Image Match"
+
+    @classmethod 
+    def poll(self, context):
+        settings = context.scene.match_settings
+        return settings.current_image_collection is not None
 
     def draw(self, context):
         layout = self.layout
@@ -278,12 +294,14 @@ class PnpPanel(bpy.types.Panel):
     bl_region_type = "TOOLS"
     bl_category = "Image Match"
 
+    @classmethod 
+    def poll(self, context):
+        settings = context.scene.match_settings
+        return settings.current_image_collection is not None
+
     def draw(self, context):
         layout = self.layout
         settings = context.scene.match_settings
-
-        col = layout.column(heading="3D Points", align=True)
-        col.prop(settings, "points_3d_collection")
         
         col = layout.column(heading="Calibrate", align=True)
         col.prop(settings, "pnp_intrinsics_focal_length", text="Focal Length")
@@ -311,6 +329,11 @@ class ExportPanel(bpy.types.Panel):
     bl_space_type = "CLIP_EDITOR"
     bl_region_type = "TOOLS"
     bl_category = "Image Match"
+
+    @classmethod 
+    def poll(self, context):
+        settings = context.scene.match_settings
+        return settings.current_image_collection is not None
 
     def draw(self, context):
         layout = self.layout

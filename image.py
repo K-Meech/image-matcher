@@ -18,15 +18,16 @@ class IMAGE_OT_add_image(bpy.types.Operator):
 
     def execute(self, context):
         settings = context.scene.match_settings
-        collection_name = settings.image_match_collection
+        collection_name = settings.image_match_collection_name
 
         # Create collection to hold all image match results 
         # (if doesn't already exist)
         if collection_name not in bpy.data.collections:
             result_collection = bpy.data.collections.new(collection_name)
             context.scene.collection.children.link(result_collection)
+            settings.image_match_collection = result_collection
         else:
-            result_collection = bpy.data.collections[collection_name]
+            result_collection = settings.image_match_collection
 
         if settings.image_filepath == "":
             self.report({'ERROR'}, 'Please input image filepath')
@@ -73,6 +74,7 @@ class IMAGE_OT_add_image(bpy.types.Operator):
         image_collection.objects.link(camera_object)
 
         settings.current_image_collection = image_collection
+        settings.points_3d_collection = point_collection
 
         return {'FINISHED'}
     
@@ -85,10 +87,10 @@ class IMAGE_OT_swap_image(bpy.types.Operator):
 
     def execute(self, context):
         settings = context.scene.match_settings
-        result_collection = bpy.data.collections[settings.collection]
+        result_collection = settings.image_match_collection
 
         if settings.current_image_collection is None:
-            self.report({'ERROR'}, 'Please choose an image')
+            self.report({'WARNING'}, 'Please choose an image')
             return {'CANCELLED'}
         
         if settings.current_image_collection.name not in result_collection.children:
@@ -107,6 +109,22 @@ class IMAGE_OT_swap_image(bpy.types.Operator):
         
         movie_clip = camera.data.background_images[0].clip
         open_movie_clip(movie_clip)
+
+        # Find point collection, it will be a child of the current_image_collection
+        # starting with the 'points_3d_collection_name' (it might not be an exact
+        # match as all Blender collection names are unique, so it might have a .001/
+        # .002 etc suffix)
+        point_collection_name = settings.points_3d_collection_name
+        point_collection_found = False
+        for collection in settings.current_image_collection.children:
+            if collection.name.startswith(point_collection_name):
+                point_collection_found = True
+                settings.points_3d_collection = collection
+                break
+        
+        if not point_collection_found:
+            self.report({'ERROR'}, '3D point collection not found in image collection')
+            return {'CANCELLED'}
 
         return {'FINISHED'}
     
@@ -275,8 +293,7 @@ class IMAGE_OT_add_3d_point(bpy.types.Operator):
                 empty.empty_display_size = 0.1
                 empty.location = best_hit
                 
-                image_collection = settings.current_image_collection
-                point_collection = image_collection.children[settings.points_3d_collection_name]
+                point_collection = settings.points_3d_collection
                 point_collection.objects.link(empty)
 
                 # Update record of 2D-3D point correspondances
@@ -312,7 +329,6 @@ class IMAGE_OT_delete_3d_point(bpy.types.Operator):
         rv3d = context.region_data
         settings = context.scene.match_settings
 
-        image_collection = settings.current_image_collection
         current_points = settings.current_points
 
         # Coordinates within region are global coordinates - region location
