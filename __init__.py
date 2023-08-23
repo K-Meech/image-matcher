@@ -21,19 +21,9 @@ from .image import IMAGE_OT_add_image, IMAGE_OT_swap_image, \
         IMAGE_OT_delete_3d_point, IMAGE_OT_delete_2d_point, set_point_mode
 
 
-def poll_image_collection(self, object):
-    """Only allow selection of collections inside the result collection"""
-    result_collection = self.image_match_collection
-    return object.name in result_collection.children
-
-
-def update_current_image(self, context):
-    bpy.ops.imagematches.swap_image('INVOKE_DEFAULT')
-
-
 def update_active_point_match(self, context):
     active_point_index = self.active_point_index
-    active_point_match = self.current_points[active_point_index]
+    active_point_match = self.point_matches[active_point_index]
 
     # Select the current 3d point
     bpy.ops.object.select_all(action='DESELECT')
@@ -64,11 +54,6 @@ def force_redraw(self, context):
 class PointMatch(bpy.types.PropertyGroup):
     """Group of properties representing a 2D-3D point match"""
 
-    # id: bpy.props.IntProperty(
-    #        name="Point id",
-    #        description="Id of this point match",
-    #        default=1)
-
     is_point_2d_initialised: bpy.props.BoolProperty(
         name="2D point",
         description="Is 2D point initialised?",
@@ -91,10 +76,49 @@ class PointMatch(bpy.types.PropertyGroup):
         default="",
         description="Name of track for this 2D point")
     
-    point_3d: bpy.props.PointerProperty(
-        name="3D point",
-        type=bpy.types.Object)
 
+class ImageMatch(bpy.types.PropertyGroup):
+    """Group of properties representing an image to be matched"""
+
+    # Name of image collection/clip - may be a shortened version
+    # of the full name as Blender has a character limit
+    name: bpy.props.StringProperty(
+        name="Name of image collection/clip",
+        default="",
+        description="Name of image collection/clip")
+    
+    full_name: bpy.props.StringProperty(
+        name="Full filename of image",
+        default="",
+        description="Full filename of image")
+    
+    movie_clip: bpy.props.PointerProperty(
+        name="Movie clip for image",
+        description="Move clip for image",
+        type=bpy.types.MovieClip)
+    
+    image_collection: bpy.props.PointerProperty(
+        name="Image collection",
+        description="Collection for image",
+        type=bpy.types.Collection)
+
+    points_3d_collection: bpy.props.PointerProperty(
+        name="3D points collection",
+        description="Collection for 3D points of image",
+        type=bpy.types.Collection)
+    
+    point_matches: bpy.props.CollectionProperty(
+        type = PointMatch,
+        name = "Current points",
+        description ="Current points")
+    
+    active_point_index: bpy.props.IntProperty(
+        name = "Active point index",
+        description = "Active point index",
+        default = 0,
+        update = update_active_point_match
+    )
+    
 
 class ImageMatchSettings(bpy.types.PropertyGroup):
 
@@ -119,17 +143,21 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         description="Name of collection for image match results",
         default="image-match")
     
-    current_image_collection: bpy.props.PointerProperty(
-        name="Current image collection",
-        description="Collection for current image",
-        type=bpy.types.Collection,
-        poll=poll_image_collection,
-        update=update_current_image)
-
-    points_3d_collection: bpy.props.PointerProperty(
-        name="3D points collection",
-        description="Collection for 3D points of current image",
-        type=bpy.types.Collection)
+    image_matches: bpy.props.CollectionProperty(
+        type = ImageMatch,
+        name = "Current image matches",
+        description ="Current image matches")
+    
+    active_image_index: bpy.props.IntProperty(
+        name = "Active image index",
+        description = "Active image index",
+        default = 0
+    )
+    
+    current_image_name: bpy.props.StringProperty(
+        name="Current image name",
+        description="Current image name",
+        default="")
     
     points_3d_collection_name: bpy.props.StringProperty(
         name="3D points collection name",
@@ -179,18 +207,6 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         update=set_point_mode
     )
 
-    active_point_index: bpy.props.IntProperty(
-        name = "Active point index",
-        description = "Active point index",
-        default = 0,
-        update = update_active_point_match
-    )
-
-    current_points: bpy.props.CollectionProperty(
-        type = PointMatch,
-        name = "Current points",
-        description ="Current points")
-    
 
 class POINT_UL_UI(bpy.types.UIList):
     """UI for point list"""
@@ -217,16 +233,26 @@ class POINT_UL_UI(bpy.types.UIList):
             col.enabled = True
         else:
             col.enabled = False
-        # DELETE 2D
-        col.prop(point, "is_point_3d_initialised")
+
+
+class IMAGE_UL_UI(bpy.types.UIList):
+    """UI for image list"""
+
+    def draw_item(self, context, layout, data, image, icon, active_data,
+                  active_propname, index):
+        settings = context.scene.match_settings
+
+        icon = "IMAGE_PLANE"
+        row = layout.row()
 
         col = layout.column()
-        if point.is_point_3d_initialised:
-            col.enabled = True
-        else:
-            col.enabled = False
-        # DELETE 3D
-        col.prop(point, "is_point_3d_initialised")
+
+        is_image_active = image.name == settings.current_image_name
+        swap_operator = col.operator("imagematches.swap_image", text="", icon=icon, depress=is_image_active)
+        swap_operator.image_name = image.name
+
+        col = layout.column()
+        col.label(text=image.name)
 
 
 class ImagePanel(bpy.types.Panel):
@@ -248,9 +274,12 @@ class ImagePanel(bpy.types.Panel):
         row.operator("imagematches.add_image")
 
         row = layout.row()
-        row.label(text="Current image:")
+        row.label(text="Loaded images:")
+
         row = layout.row()
-        row.prop(settings, "current_image_collection", text="")
+        row.template_list("IMAGE_UL_UI", "Image_List", settings, 
+                          "image_matches", settings, "active_image_index",
+                          rows=3)
 
 
 class PointsPanel(bpy.types.Panel):
@@ -263,7 +292,7 @@ class PointsPanel(bpy.types.Panel):
     @classmethod 
     def poll(self, context):
         settings = context.scene.match_settings
-        return settings.current_image_collection is not None
+        return settings.current_image_name != ""
 
     def draw(self, context):
         layout = self.layout
@@ -284,7 +313,8 @@ class PointsPanel(bpy.types.Panel):
         row.prop(settings, 'point_mode_enabled', text=mode_txt, icon=mode_icon, toggle=True)
 
         row = layout.row()
-        row.template_list("POINT_UL_UI", "Point_List", settings, "current_points", settings, "active_point_index")
+        current_image = settings.image_matches[settings.current_image_name]
+        row.template_list("POINT_UL_UI", "Point_List", current_image, "point_matches", current_image, "active_point_index")
 
 
 class PnpPanel(bpy.types.Panel):
@@ -297,7 +327,7 @@ class PnpPanel(bpy.types.Panel):
     @classmethod 
     def poll(self, context):
         settings = context.scene.match_settings
-        return settings.current_image_collection is not None
+        return settings.current_image_name != ""
 
     def draw(self, context):
         layout = self.layout
@@ -333,7 +363,7 @@ class ExportPanel(bpy.types.Panel):
     @classmethod 
     def poll(self, context):
         settings = context.scene.match_settings
-        return settings.current_image_collection is not None
+        return settings.current_image_name != ""
 
     def draw(self, context):
         layout = self.layout
@@ -419,6 +449,8 @@ def register_classes(unregister=False):
 
     classes = [PointMatch,
                POINT_UL_UI,
+               ImageMatch,
+               IMAGE_UL_UI,
                ImageMatchSettings,
                OBJECT_OT_export_matches,
                PNP_OT_calibrate_camera,

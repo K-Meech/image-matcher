@@ -10,6 +10,18 @@ def open_movie_clip(movie_clip):
             area.spaces.active.clip = movie_clip
 
 
+def check_if_image_already_added(context, image_filename):
+    """Check if an image with that filename has already been 
+    added. Have to check against the saved full name, as Blender
+    shortens filenames over a certain character limit"""
+    settings = context.scene.match_settings
+    for image in settings.image_matches:
+        if image_filename == image.full_name:
+            return True
+        
+    return False
+
+
 class IMAGE_OT_add_image(bpy.types.Operator):
     """Add a new image"""
     bl_idname = "imagematches.add_image"
@@ -18,29 +30,30 @@ class IMAGE_OT_add_image(bpy.types.Operator):
 
     def execute(self, context):
         settings = context.scene.match_settings
-        collection_name = settings.image_match_collection_name
+        result_collection = settings.image_match_collection
 
         # Create collection to hold all image match results 
         # (if doesn't already exist)
-        if collection_name not in bpy.data.collections:
+        if result_collection is None:
+            collection_name = settings.image_match_collection_name
             result_collection = bpy.data.collections.new(collection_name)
             context.scene.collection.children.link(result_collection)
             settings.image_match_collection = result_collection
-        else:
-            result_collection = settings.image_match_collection
 
         if settings.image_filepath == "":
             self.report({'ERROR'}, 'Please input image filepath')
             return {'CANCELLED'}
         
-        image_name = os.path.basename(os.path.normpath(settings.image_filepath))
-
-        if image_name in bpy.data.movieclips:
+        image_filename = os.path.basename(os.path.normpath(settings.image_filepath))
+        
+        if check_if_image_already_added(context, image_filename):
             self.report({'ERROR'}, 'Image of same name already loaded')
             return {'CANCELLED'}
         
-        bpy.data.movieclips.load(settings.image_filepath)
-        movie_clip = bpy.data.movieclips.get(image_name)
+        movie_clip = bpy.data.movieclips.load(settings.image_filepath)
+        # Blender may shorten the name if it is over a certain number 
+        # of characters
+        short_name = movie_clip.name
 
         # Fake user so clip won't be deleted if not referenced in blend file
         movie_clip.use_fake_user = True
@@ -48,8 +61,7 @@ class IMAGE_OT_add_image(bpy.types.Operator):
         open_movie_clip(movie_clip)
         
         # Collection for this specific image
-        image_name_no_extension = os.path.splitext(image_name)[0]
-        image_collection = bpy.data.collections.new(image_name_no_extension)
+        image_collection = bpy.data.collections.new(short_name)
         result_collection.children.link(image_collection)
 
         # Collection for 3D points
@@ -73,8 +85,14 @@ class IMAGE_OT_add_image(bpy.types.Operator):
         camera_object = bpy.data.objects.new('Camera', camera_data)
         image_collection.objects.link(camera_object)
 
-        settings.current_image_collection = image_collection
-        settings.points_3d_collection = point_collection
+        image_match = settings.image_matches.add()
+        image_match.name = short_name
+        image_match.full_name = image_filename
+        image_match.movie_clip = movie_clip
+        image_match.image_collection = image_collection
+        image_match.points_3d_collection = point_collection
+
+        settings.current_image_name = image_match.name
 
         return {'FINISHED'}
     
@@ -85,46 +103,22 @@ class IMAGE_OT_swap_image(bpy.types.Operator):
     bl_label = "Swap image"
     # bl_options = {'REGISTER', 'UNDO'}
 
+    image_name: bpy.props.StringProperty(
+        name="Image name",
+        default="",
+        description="Image name to swap to")
+
     def execute(self, context):
         settings = context.scene.match_settings
-        result_collection = settings.image_match_collection
 
-        if settings.current_image_collection is None:
-            self.report({'WARNING'}, 'Please choose an image')
+        if self.image_name not in settings.image_matches:
+            self.report({'ERROR'}, "Image doesn't exist")
             return {'CANCELLED'}
         
-        if settings.current_image_collection.name not in result_collection.children:
-            self.report({'ERROR'}, 'Image collection not in results collection')
-            return {'CANCELLED'}
+        image_match = settings.image_matches[self.image_name]
         
-        camera = None
-        for object in settings.current_image_collection.objects:
-            if object.type == "CAMERA":
-                camera = object
-                break
-
-        if camera is None:
-            self.report({'ERROR'}, 'No camera found in image collection')
-            return {'CANCELLED'}
-        
-        movie_clip = camera.data.background_images[0].clip
-        open_movie_clip(movie_clip)
-
-        # Find point collection, it will be a child of the current_image_collection
-        # starting with the 'points_3d_collection_name' (it might not be an exact
-        # match as all Blender collection names are unique, so it might have a .001/
-        # .002 etc suffix)
-        point_collection_name = settings.points_3d_collection_name
-        point_collection_found = False
-        for collection in settings.current_image_collection.children:
-            if collection.name.startswith(point_collection_name):
-                point_collection_found = True
-                settings.points_3d_collection = collection
-                break
-        
-        if not point_collection_found:
-            self.report({'ERROR'}, '3D point collection not found in image collection')
-            return {'CANCELLED'}
+        open_movie_clip(image_match.movie_clip)
+        settings.current_image_name = self.image_name
 
         return {'FINISHED'}
     
@@ -145,10 +139,10 @@ def coordinates_within_region(region, region_coordinate):
 def coordinates_within_region_bounds(region, coordinate):
     if (region.x < coordinate[0] < region.x + region.width 
         and region.y < coordinate[1] < region.y + region.height):
-        print("in region")
+        # print("in region")
         return True
     else:
-        print("out region")
+        # print("out region")
         return False
     
 
@@ -218,27 +212,27 @@ def obj_ray_cast(ray_origin, ray_target, obj, matrix):
         return None, None, None
     
 
-def find_next_point(current_points, is2D):
+def find_next_point(point_matches, is2D):
     """Find the next point to update i.e. first in the list with
     a missing 2D or 3D point. If none, make a new point.
     Can likely be made more efficient as currently this loops 
     through the list from the start every time"""
-    if len(current_points) > 0:
-        for point in current_points:
+    if len(point_matches) > 0:
+        for point in point_matches:
             if is2D and not point.is_point_2d_initialised:
                 return point
             elif not is2D and not point.is_point_3d_initialised:
                 return point
             
-    return current_points.add()
+    return point_matches.add()
 
 
-def delete_point_if_empty(current_points, index):
-    """Delete point at index in current_points if it has no 2D or 3D
+def delete_point_if_empty(point_matches, index):
+    """Delete point at index in point_matches if it has no 2D or 3D
     point inside"""
-    point = current_points[index]
+    point = point_matches[index]
     if not point.is_point_2d_initialised and not point.is_point_3d_initialised:
-        current_points.remove(index)
+        point_matches.remove(index)
     
 
 class IMAGE_OT_add_3d_point(bpy.types.Operator):
@@ -292,13 +286,14 @@ class IMAGE_OT_add_3d_point(bpy.types.Operator):
                 empty.empty_display_type = "SPHERE"
                 empty.empty_display_size = 0.1
                 empty.location = best_hit
-                
-                point_collection = settings.points_3d_collection
+
+                current_image = settings.image_matches[settings.current_image_name]
+                point_collection = current_image.points_3d_collection
                 point_collection.objects.link(empty)
 
                 # Update record of 2D-3D point correspondances
-                current_points = settings.current_points
-                next_point = find_next_point(current_points, False)
+                point_matches = current_image.point_matches
+                next_point = find_next_point(point_matches, False)
                 next_point.is_point_3d_initialised = True
                 next_point.point_3d = empty
 
@@ -329,13 +324,14 @@ class IMAGE_OT_delete_3d_point(bpy.types.Operator):
         rv3d = context.region_data
         settings = context.scene.match_settings
 
-        current_points = settings.current_points
+        current_image = settings.image_matches[settings.current_image_name]
+        point_matches = current_image.point_matches
 
         # Coordinates within region are global coordinates - region location
         region_coord = self.point_x - region.x, self.point_y - region.y
 
-        for i in range(len(current_points)):
-            point = current_points[i]
+        for i in range(len(point_matches)):
+            point = point_matches[i]
             if point.is_point_3d_initialised:
                 empty = point.point_3d
 
@@ -368,7 +364,7 @@ class IMAGE_OT_delete_3d_point(bpy.types.Operator):
                     bpy.data.objects.remove(empty, do_unlink=True)
 
                     point.is_point_3d_initialised = False
-                    delete_point_if_empty(current_points, i)
+                    delete_point_if_empty(point_matches, i)
                     break
         
         return {'FINISHED'}
@@ -415,8 +411,9 @@ class IMAGE_OT_add_2d_point(bpy.types.Operator):
 
             # Update record of 2D-3D point correspondances
             settings = context.scene.match_settings
-            current_points = settings.current_points
-            next_point = find_next_point(current_points, True)                  
+            current_image = settings.image_matches[settings.current_image_name]
+            point_matches = current_image.point_matches
+            next_point = find_next_point(point_matches, True)                  
             next_point.is_point_2d_initialised = True
             next_point.point_2d = track.name
         
@@ -458,10 +455,12 @@ class IMAGE_OT_delete_2d_point(bpy.types.Operator):
         if 0 <= view_coord[0] <= 1 and 0 <= view_coord[1] <= 1:
             current_movie_clip = context.edit_movieclip
             tracks = current_movie_clip.tracking.objects[0].tracks
-            current_points = settings.current_points
 
-            for i in range(len(current_points)):
-                point = current_points[i]
+            current_image = settings.image_matches[settings.current_image_name]
+            point_matches = current_image.point_matches
+
+            for i in range(len(point_matches)):
+                point = point_matches[i]
                 if point.is_point_2d_initialised: 
                     track = tracks[point.point_2d]
 
@@ -480,7 +479,7 @@ class IMAGE_OT_delete_2d_point(bpy.types.Operator):
 
                         point.is_point_2d_initialised = False
                         point.point_2d = ""
-                        delete_point_if_empty(current_points, i)
+                        delete_point_if_empty(point_matches, i)
 
                         break
         
@@ -571,6 +570,4 @@ def set_point_mode(self, context):
     if self.point_mode_enabled:
         bpy.ops.imagematches.point_mode('INVOKE_DEFAULT')
 
-
-        
 

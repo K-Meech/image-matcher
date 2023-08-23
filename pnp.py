@@ -52,7 +52,8 @@ def get_scene_info(self, context):
 
     # retrieve 3D points from scene objects
     points_3d = []
-    collection_3d = settings.points_3d_collection
+    current_image = settings.image_matches[settings.current_image_name]
+    collection_3d = current_image.points_3d_collection
     if collection_3d == None:
         self.report({'ERROR'}, 'Please specify a collection for the 3D points')
         l3d = 0
