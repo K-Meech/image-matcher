@@ -97,6 +97,11 @@ class ImageMatch(bpy.types.PropertyGroup):
         description="Move clip for image",
         type=bpy.types.MovieClip)
     
+    camera: bpy.props.PointerProperty(
+        name="Camera",
+        description="Camera for this image",
+        type=bpy.types.Object)
+    
     image_collection: bpy.props.PointerProperty(
         name="Image collection",
         description="Collection for image",
@@ -164,29 +169,29 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         description="Name for collection of 3D points",
         default="points-3d")
     
-    pnp_intrinsics_focal_length: bpy.props.BoolProperty(
-        name="Focal Length",
-        description="Calibrate Focal Length",
+    calibrate_focal_length: bpy.props.BoolProperty(
+        name="Calibrate focal length",
+        description="Whether to calibrate the focal length",
         default=True)
     
-    pnp_intrinsics_principal_point: bpy.props.BoolProperty(
-        name="Optical Center",
-        description="Calibrate Optical Center",
+    calibrate_principal_point: bpy.props.BoolProperty(
+        name="Calibrate optical center",
+        description="Whether to calibrate the optical center",
         default=False)
     
-    pnp_intrinsics_distortion_k1: bpy.props.BoolProperty(
-        name="Distortion K1",
-        description="Calibrate Radial Distortion K1",
+    calibrate_distortion_k1: bpy.props.BoolProperty(
+        name="Calibrate distortion K1",
+        description="Whether to calibrate radial distortion K1",
         default=False)
     
-    pnp_intrinsics_distortion_k2: bpy.props.BoolProperty(
-        name="Distortion K2",
-        description="Calibrate Radial Distortion K2",
+    calibrate_distortion_k2: bpy.props.BoolProperty(
+        name="Calibrate distortion K2",
+        description="Whether to calibrate radial distortion K2",
         default=False)
     
-    pnp_intrinsics_distortion_k3: bpy.props.BoolProperty(
-        name="Distortion K3",
-        description="Calibrate Radial Distortion K3",
+    calibrate_distortion_k3: bpy.props.BoolProperty(
+        name="Calibrate distortion K3",
+        description="Whether to calibrate radial distortion K3",
         default=False)
     
     pnp_msg: bpy.props.StringProperty(
@@ -334,23 +339,26 @@ class PnpPanel(bpy.types.Panel):
         settings = context.scene.match_settings
         
         col = layout.column(heading="Calibrate", align=True)
-        col.prop(settings, "pnp_intrinsics_focal_length", text="Focal Length")
-        col.prop(settings, "pnp_intrinsics_principal_point", text="Optical Center")
+        col.prop(settings, "calibrate_focal_length", text="Focal Length")
+        col.prop(settings, "calibrate_principal_point", text="Optical Center")
         row = col.row(align=True).split(factor=0.22)
-        row.prop(settings, "pnp_intrinsics_distortion_k1", text="K1")
+        row.prop(settings, "calibrate_distortion_k1", text="K1")
         row = row.row(align=True).split(factor=0.3)
-        row.prop(settings, "pnp_intrinsics_distortion_k2", text="K2")
-        row.prop(settings, "pnp_intrinsics_distortion_k3", text="K3 Distortion")
+        row.prop(settings, "calibrate_distortion_k2", text="K2")
+        row.prop(settings, "calibrate_distortion_k3", text="K3 Distortion")
         
         col = layout.column(align=True)
         col.operator("pnp.calibrate_camera", text="Calibrate Camera")
         
-        col = layout.column(align=True)
-        col.operator("pnp.solve_pnp", text="Solve Camera Pose")
-        col.scale_y = 2.0
-        
-        col = layout.column(align=True)
-        col.label(text=settings.pnp_msg)
+        row = layout.row(align=True)
+        row.label(text="Solve")
+
+        row = layout.row()
+        row.operator("pnp.solve_pnp", text="Solve Camera Pose")
+        row.scale_y = 2.0
+
+        row = layout.row()
+        row.label(text=settings.pnp_msg)
 
 
 class ExportPanel(bpy.types.Panel):

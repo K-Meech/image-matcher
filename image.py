@@ -89,6 +89,7 @@ class IMAGE_OT_add_image(bpy.types.Operator):
         image_match.name = short_name
         image_match.full_name = image_filename
         image_match.movie_clip = movie_clip
+        image_match.camera = camera_object
         image_match.image_collection = image_collection
         image_match.points_3d_collection = point_collection
 
@@ -119,6 +120,8 @@ class IMAGE_OT_swap_image(bpy.types.Operator):
         
         open_movie_clip(image_match.movie_clip)
         settings.current_image_name = self.image_name
+
+        context.scene.camera = image_match.camera
 
         return {'FINISHED'}
     
@@ -395,7 +398,6 @@ class IMAGE_OT_add_2d_point(bpy.types.Operator):
         # Coordinates within region are global coordinates - region location
         region_coord = self.point_x - region.x, self.point_y - region.y
 
-        # region_coord = event.mouse_region_x, event.mouse_region_y
         # Coordinates within image - 0 to 1 on each axis
         view_coord = region.view2d.region_to_view(region_coord[0], region_coord[1])
 
