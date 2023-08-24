@@ -18,7 +18,8 @@ from .export import OBJECT_OT_export_matches
 from . import dependency
 from .image import IMAGE_OT_add_image, IMAGE_OT_swap_image, \
     IMAGE_OT_point_mode, IMAGE_OT_add_3d_point, IMAGE_OT_add_2d_point, \
-        IMAGE_OT_delete_3d_point, IMAGE_OT_delete_2d_point, set_point_mode
+        IMAGE_OT_delete_3d_point, IMAGE_OT_delete_2d_point, set_point_mode, \
+        IMAGE_OT_toggle_camera_view
 
 
 def update_active_point_match(self, context):
@@ -337,6 +338,7 @@ class PnpPanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         settings = context.scene.match_settings
+        current_image = settings.image_matches[settings.current_image_name]
         
         col = layout.column(heading="Calibrate", align=True)
         col.prop(settings, "calibrate_focal_length", text="Focal Length")
@@ -359,6 +361,12 @@ class PnpPanel(bpy.types.Panel):
 
         row = layout.row()
         row.label(text=settings.pnp_msg)
+
+        row = layout.row()
+        row.operator("imagematches.toggle_camera", text="Toggle camera view", icon="VIEW_CAMERA")
+        row.prop(current_image.camera.data, "show_background_images", text="Show matched image")
+        row = layout.row()
+        row.prop(current_image.camera.data.background_images[0], "alpha", text="Image opacity")
 
 
 class ExportPanel(bpy.types.Panel):
@@ -473,7 +481,8 @@ def register_classes(unregister=False):
                IMAGE_OT_add_3d_point,
                IMAGE_OT_add_2d_point,
                IMAGE_OT_delete_3d_point,
-               IMAGE_OT_delete_2d_point
+               IMAGE_OT_delete_2d_point,
+               IMAGE_OT_toggle_camera_view
                ]
     
     if unregister:

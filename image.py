@@ -261,7 +261,7 @@ class IMAGE_OT_add_3d_point(bpy.types.Operator):
         settings = context.scene.match_settings
         model = settings.model
         if model is None:
-            self.report({'WARNING'}, "No 3D model selected")
+            self.report({'ERROR'}, "No 3D model selected")
             return {'CANCELLED'}
 
         region = context.region
@@ -553,14 +553,14 @@ class IMAGE_OT_point_mode(bpy.types.Operator):
         # Find clip editor area
         self.window_clip, self.area_clip, self.region_clip = find_area(context, "CLIP_EDITOR")
         if self.area_clip is None: 
-            self.report({'WARNING'}, "No clip editor open")
+            self.report({'ERROR'}, "No clip editor open")
             settings.point_mode_enabled = False
             return {'CANCELLED'}
 
         # Find 3D view area
         self.window_3d, self.area_3d, self.region_3d = find_area(context, "VIEW_3D")
         if self.area_3d is None: 
-            self.report({'WARNING'}, "No 3D view open")
+            self.report({'ERROR'}, "No 3D view open")
             settings.point_mode_enabled = False
             return {'CANCELLED'}
 
@@ -571,5 +571,24 @@ class IMAGE_OT_point_mode(bpy.types.Operator):
 def set_point_mode(self, context):
     if self.point_mode_enabled:
         bpy.ops.imagematches.point_mode('INVOKE_DEFAULT')
+
+    
+class IMAGE_OT_toggle_camera_view(bpy.types.Operator):
+    bl_idname = "imagematches.toggle_camera"
+    bl_label = "Toggle camera view"
+    bl_description = "Toggle camera view"
+    
+    def execute(self, context):
+        window_3d, area_3d, region_3d = find_area(context, "VIEW_3D")
+
+        if area_3d is None: 
+            self.report({'ERROR'}, "No 3D view open")
+            return {'CANCELLED'}
+        
+        with context.temp_override(window=window_3d, area=area_3d, region=region_3d):
+            bpy.ops.view3d.view_camera()
+        
+        return {'FINISHED'}
+                    
 
 
