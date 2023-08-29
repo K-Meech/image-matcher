@@ -57,6 +57,12 @@ def current_image_initialised(context):
     return settings.current_image_name != ""
 
 
+export_types = [
+    ("BLENDER", "Blender", "", 1),
+    ("THREEJS", "ThreeJS", "", 2)
+]
+
+
 class PointMatch(bpy.types.PropertyGroup):
     """Group of properties representing a 2D-3D point match"""
 
@@ -227,6 +233,11 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         default=False,
         update=force_redraw
     )
+
+    export_type: bpy.props.EnumProperty(
+        name="Export type",
+        description="Export type",
+        items=export_types)
 
 
 class POINT_UL_UI(bpy.types.UIList):
@@ -489,6 +500,10 @@ class ExportPanel(bpy.types.Panel):
         row = layout.row(align=True)
         row.label(text="Export filepath :")
         row.prop(settings, "export_filepath", text="")
+
+        row = layout.row(align=True)
+        row.label(text="Export type :")
+        row.prop(settings, "export_type", text="")
 
         row = layout.row()
         row.operator("imagematches.export_matches")
