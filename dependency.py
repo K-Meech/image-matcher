@@ -1,9 +1,10 @@
-# Based on original code from Robert Guetzkow
-# https://github.com/robertguetzkow/blender-python-examples/tree/master/add_ons/install_dependencies
-# https://blender.stackexchange.com/questions/168448/bundling-python-library-with-addon
+""" Based on original code from Robert Guetzkow
+ https://github.com/robertguetzkow/blender-python-examples/tree/master/add_ons/install_dependencies
+ https://blender.stackexchange.com/questions/168448/bundling-python-library-with-addon
 
-# Based on molecular nodes package installation:
-# https://github.com/BradyAJohnston/MolecularNodes/blob/main/MolecularNodes/pkg.py
+ Based on molecular nodes package installation:
+ https://github.com/BradyAJohnston/MolecularNodes/blob/main/MolecularNodes/pkg.py 
+ """
 
 import os
 import sys
@@ -12,9 +13,7 @@ import importlib.util
 
 
 def is_available(dependencies):
-    """
-    Check if all dependencies are available
-    """
+    """Check if all dependencies are available"""
     for dependency in dependencies:
         if importlib.util.find_spec(dependency.module) is None:
             return False

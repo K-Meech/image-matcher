@@ -9,6 +9,9 @@ def force_redraw(self, context):
 
 
 def update_active_point_match(self, context):
+    """When a new point match is selected, select the corresponding 2D and
+    3D point"""
+
     active_point_index = self.active_point_index
     active_point_match = self.point_matches[active_point_index]
 
@@ -113,6 +116,8 @@ class ImageMatch(bpy.types.PropertyGroup):
 
 
 class ImageMatchSettings(bpy.types.PropertyGroup):
+    """Group of properties representing overall settings for this plugin"""
+
     export_filepath: bpy.props.StringProperty(
         name="Export filepath",
         default="",

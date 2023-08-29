@@ -5,6 +5,8 @@ from mathutils import Vector
 
 
 def open_movie_clip(movie_clip):
+    """Open movie clip in clip editor"""
+
     for area in bpy.context.screen.areas:
         if area.type == "CLIP_EDITOR":
             area.spaces.active.clip = movie_clip
@@ -27,7 +29,6 @@ class IMAGE_OT_add_image(bpy.types.Operator):
 
     bl_idname = "imagematches.add_image"
     bl_label = "Add image"
-    # bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         settings = context.scene.match_settings
@@ -108,7 +109,6 @@ class IMAGE_OT_swap_image(bpy.types.Operator):
 
     bl_idname = "imagematches.swap_image"
     bl_label = "Swap image"
-    # bl_options = {'REGISTER', 'UNDO'}
 
     image_name: bpy.props.StringProperty(
         name="Image name", default="", description="Image name to swap to"
@@ -131,37 +131,34 @@ class IMAGE_OT_swap_image(bpy.types.Operator):
         return {"FINISHED"}
 
 
-# Based on blender template - operator modal view 3D raycast
-
-
-# Region vs region coordinate
 def coordinates_within_region(region, region_coordinate):
+    """Check if region coordinate is within region"""
+
     if (
         0 <= region_coordinate[0] <= region.width
         and 0 <= region_coordinate[1] <= region.height
     ):
-        # print("in")
         return True
     else:
-        # print("out")
         return False
 
 
-# Region vs global coordinates
 def coordinates_within_region_bounds(region, coordinate):
+    """Check if global coordinate is within region"""
+
     if (
         region.x < coordinate[0] < region.x + region.width
         and region.y < coordinate[1] < region.y + region.height
     ):
-        # print("in region")
         return True
     else:
-        # print("out region")
         return False
 
 
 def find_area(context, area_type):
-    # Find window/area/region corresponding to main window of given area type
+    """Find window/area/region corresponding to main window of
+    given area type"""
+
     selected_window = None
     selected_area = None
     selected_region = None
@@ -252,11 +249,11 @@ def delete_point_if_empty(point_matches, index):
 
 
 class IMAGE_OT_add_3d_point(bpy.types.Operator):
-    """Adds point to 3D view corresponding to given global point coordinates"""
+    """Adds point to 3D view corresponding to given global point coordinates.
+    Based on blender template - operator modal view 3D raycast"""
 
     bl_idname = "imagematches.add_3d_point"
     bl_label = "Add 3D point"
-    # bl_options = {'REGISTER', 'UNDO'}
 
     point_x: bpy.props.FloatProperty(name="Mouse x", description="Mouse x")
 
@@ -319,11 +316,11 @@ class IMAGE_OT_add_3d_point(bpy.types.Operator):
 
 
 class IMAGE_OT_delete_3d_point(bpy.types.Operator):
-    """Delete point in 3D view corresponding to given global point coordinates"""
+    """Delete point in 3D view corresponding to given global point
+    coordinates"""
 
     bl_idname = "imagematches.delete_3d_point"
     bl_label = "Delete 3D point"
-    # bl_options = {'REGISTER', 'UNDO'}
 
     point_x: bpy.props.FloatProperty(name="Mouse x", description="Mouse x")
 
@@ -376,8 +373,8 @@ class IMAGE_OT_delete_3d_point(bpy.types.Operator):
                     empty_region_coord - empty_edge_region_coord
                 ).length
 
-                # Use a bounding box of width == diameter of empty sphere to detect
-                # clicks inside
+                # Use a bounding box of width == diameter of empty sphere to
+                # detect clicks inside
                 empty_min_x = empty_region_coord[0] - region_radius
                 empty_max_x = empty_region_coord[0] + region_radius
                 empty_min_y = empty_region_coord[1] - region_radius
@@ -397,11 +394,11 @@ class IMAGE_OT_delete_3d_point(bpy.types.Operator):
 
 
 class IMAGE_OT_add_2d_point(bpy.types.Operator):
-    """Adds point to clip editor corresponding to given global point coordinates"""
+    """Adds 2D point to clip editor corresponding to given global point
+    coordinates"""
 
     bl_idname = "imagematches.add_2d_point"
     bl_label = "Add 2D point"
-    # bl_options = {'REGISTER', 'UNDO'}
 
     point_x: bpy.props.FloatProperty(name="Mouse x", description="Mouse x")
 
@@ -442,12 +439,11 @@ class IMAGE_OT_add_2d_point(bpy.types.Operator):
 
 
 class IMAGE_OT_delete_2d_point(bpy.types.Operator):
-    """Deletes point in clip editor corresponding to given global point
+    """Deletes 2D point in clip editor corresponding to given global point
     coordinates"""
 
     bl_idname = "imagematches.delete_2d_point"
     bl_label = "Delete 2D point"
-    # bl_options = {'REGISTER', 'UNDO'}
 
     point_x: bpy.props.FloatProperty(name="Mouse x", description="Mouse x")
 
@@ -520,7 +516,7 @@ class IMAGE_OT_point_mode(bpy.types.Operator):
 
     bl_idname = "imagematches.point_mode"
     bl_label = "Point mode"
-    # bl_options = {'REGISTER', 'UNDO'}
+
     window_clip = None
     area_clip = None
     region_clip = None
@@ -623,9 +619,10 @@ class IMAGE_OT_point_mode(bpy.types.Operator):
 
 
 class IMAGE_OT_toggle_camera_view(bpy.types.Operator):
+    """Toggle in/out of the camera view for the current image"""
+
     bl_idname = "imagematches.toggle_camera"
     bl_label = "Toggle camera view"
-    bl_description = "Toggle camera view"
 
     def execute(self, context):
         window_3d, area_3d, region_3d = find_area(context, "VIEW_3D")
@@ -643,9 +640,10 @@ class IMAGE_OT_toggle_camera_view(bpy.types.Operator):
 
 
 class IMAGE_OT_update_3d_point_size(bpy.types.Operator):
+    """Update size of all 3D points (spherical empties)"""
+
     bl_idname = "imagematches.update_3d_point_size"
     bl_label = "Update 3D point size"
-    bl_description = "Update 3D point size"
 
     def execute(self, context):
         settings = context.scene.match_settings

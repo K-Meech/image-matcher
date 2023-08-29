@@ -61,6 +61,8 @@ class PNP_OT_install_dependencies(bpy.types.Operator):
 
 
 class PNP_preferences(bpy.types.AddonPreferences):
+    """Addon preferences panel"""
+
     bl_label = "Dependencies"
     bl_idname = __package__
 
@@ -85,6 +87,13 @@ dependencies_installed = False
 
 
 def register_classes(unregister=False):
+    """Register/un-register all addon classes
+
+    Args:
+        unregister: Unregisters when true, otherwise registers.
+        Defaults to False.
+    """
+
     # These classes are imported inside this function (and not at top of doc)
     # as they are dependent on opencv installation
     from .pnp import PNP_OT_calibrate_camera, PNP_OT_pose_camera

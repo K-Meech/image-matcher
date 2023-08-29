@@ -1,5 +1,5 @@
-# Adapted from original code from Roger Torm, RT Studios Camera Pnpoint plugin
-# https://rtstudios.gumroad.com/l/camera_pnpoint
+""" Adapted from original code from Roger Torm, RT Studios Camera Pnpoint plugin
+https://rtstudios.gumroad.com/l/camera_pnpoint """
 
 import bpy
 import cv2 as cv
@@ -8,6 +8,8 @@ from mathutils import Matrix, Vector
 
 
 def get_optical_centre(clip_camera):
+    """Get optical centre of given camera"""
+
     if bpy.app.version < (3, 5, 0):
         optical_centre = clip_camera.principal
     else:
@@ -17,6 +19,17 @@ def get_optical_centre(clip_camera):
 
 
 def get_2D_3D_point_coordinates(self, point_matches, clip):
+    """Get coordinates of all 2D-3D point matches. Discards any matches with
+    only a 2D point or only a 3D point.
+
+    Args:
+        point_matches: current point matches
+        clip: current Blender movie clip
+
+    Returns:
+        Two numpy arrays of equal size - the first being the coordinates of all
+        2D points, and the second the coordinates of all 3D points
+    """
     size = clip.size
     tracks = clip.tracking.objects[0].tracks
 
@@ -60,6 +73,9 @@ def get_2D_3D_point_coordinates(self, point_matches, clip):
 
 
 def get_distortion_coefficients(self, clip_camera):
+    """Get distortion coefficients of given camera as a numpy array of
+    np.array([k1, k2, 0, 0, k3])"""
+
     # take radial distortion parameters:
     if clip_camera.distortion_model == "POLYNOMIAL":
         k1, k2, k3 = clip_camera.k1, clip_camera.k2, clip_camera.k3
@@ -84,6 +100,15 @@ def get_distortion_coefficients(self, clip_camera):
 
 
 def get_camera_intrinsics(clip_camera, clip_size):
+    """Get array of intrinsics for given camera + movie clip size
+
+    Args:
+        clip_camera: Blender movie clip camera
+        clip_size: Blender movie clip size
+
+    Returns:
+        Numpy array of camera intrinsics
+    """
     focal = clip_camera.focal_length_pixels
     optical_centre = get_optical_centre(clip_camera)
 
@@ -101,8 +126,21 @@ def get_camera_intrinsics(clip_camera, clip_size):
 
 
 def get_scene_info(self, context):
-    """get_scene_info collects information from the movie clip and its camera,
-    as well as 2D points and 3D points from the chosen collection"""
+    """Collect information from the movie clip and its camera, as well as
+    2D and 3D points from the current image match
+
+    Args:
+        context: Blender context
+
+    Returns:
+        self - self from Blender operator
+        context - Blender context
+        clip - current Blender movie clip
+        points_3d_coords - numpy array of 3D point coordinates
+        points_2d_coords - numpy array of 2D point coordinates
+        camera_intrinsics - numpy array of camera intrinsics
+        distortion_coefficients - numpy array of camera distortion coefficients
+    """
 
     settings = context.scene.match_settings
     current_image = settings.image_matches[settings.current_image_name]
@@ -113,7 +151,7 @@ def get_scene_info(self, context):
     size = clip.size
     clip_camera = clip.tracking.camera
 
-    points_2D_coords, points_3d_coords = get_2D_3D_point_coordinates(
+    points_2d_coords, points_3d_coords = get_2D_3D_point_coordinates(
         self, current_image.point_matches, clip
     )
     camera_intrinsics = get_camera_intrinsics(clip_camera, size)
@@ -124,7 +162,7 @@ def get_scene_info(self, context):
         context,
         clip,
         points_3d_coords,
-        points_2D_coords,
+        points_2d_coords,
         camera_intrinsics,
         distortion_coefficients,
     )
@@ -139,7 +177,20 @@ def solve_pnp(
     camera_intrinsics,
     distortion_coefficients,
 ):
-    """Main PnP solver function"""
+    """Solve camera pose with OpenCV's PNP solver. Set the current camera
+    intrinsics, extrinsics and background image to match
+
+    Args:
+        context: Blender context
+        clip: Blender movie clip
+        points_3d_coords: numpy array of 3D point coordinates
+        points_2d_coords: numpy array of 2D point coordinates
+        camera_intrinsics: numpy array of camera intrinsics
+        distortion_coefficients: numpy array of camera distortion coefficients
+
+    Returns:
+        Status for operator - cancelled or finished
+    """
 
     npoints = points_3d_coords.shape[0]
     size = clip.size
@@ -251,7 +302,20 @@ def calibrate_camera(
     camera_intrinsics,
     distortion_coefficients,
 ):
-    """Main calibration solver function"""
+    """Calibrate current tracking camera using openCV. Sets the intrinsics
+    that are currently specified in the settings.
+
+    Args:
+        context: Blender context
+        clip: Blender movie clip
+        points_3d_coords: numpy array of 3D point coordinates
+        points_2d_coords: numpy array of 2D point coordinates
+        camera_intrinsics: numpy array of camera intrinsics
+        distortion_coefficients: numpy array of camera distortion coefficients
+
+    Returns:
+        Status for operator - cancelled or finished
+    """
 
     settings = context.scene.match_settings
     npoints = points_3d_coords.shape[0]
@@ -326,12 +390,11 @@ def calibrate_camera(
 
 
 class PNP_OT_pose_camera(bpy.types.Operator):
+    """Solve camera extrinsics using available 2D-3D point matches"""
+
     bl_idname = "pnp.solve_pnp"
     bl_label = "Solve camera extrinsics"
     bl_options = {"UNDO"}
-    bl_description = (
-        "Solve camera extrinsics using available markers and 3D points"
-    )
 
     def execute(self, context):
         if context.object.mode != "OBJECT":
@@ -343,12 +406,11 @@ class PNP_OT_pose_camera(bpy.types.Operator):
 
 
 class PNP_OT_calibrate_camera(bpy.types.Operator):
+    """Solve camera intrinsics using available 2D-3D point matches"""
+
     bl_idname = "pnp.calibrate_camera"
     bl_label = "Solve camera intrinsics"
     bl_options = {"UNDO"}
-    bl_description = (
-        "Solve camera intrinsics using available markers and 3D points"
-    )
 
     def execute(self, context):
         if context.object.mode != "OBJECT":

@@ -2,12 +2,13 @@ import bpy
 
 
 def current_image_initialised(context):
+    """Check if current image has been initialised"""
     settings = context.scene.match_settings
     return settings.current_image_name != ""
 
 
 class POINT_UL_UI(bpy.types.UIList):
-    """UI for point list"""
+    """UI for 2D-3D point list"""
 
     def draw_item(
         self,
@@ -77,6 +78,8 @@ class IMAGE_UL_UI(bpy.types.UIList):
 
 
 class ImagePanel(bpy.types.Panel):
+    """Panel to add or change current image"""
+
     bl_label = "Add / Change Image"
     bl_idname = "CLIP_PT_AddImage"
     bl_space_type = "CLIP_EDITOR"
@@ -110,6 +113,8 @@ class ImagePanel(bpy.types.Panel):
 
 
 class PointsPanel(bpy.types.Panel):
+    """Panel for all 2D/3D point settings"""
+
     bl_label = "Points"
     bl_idname = "CLIP_PT_Points"
     bl_space_type = "CLIP_EDITOR"
@@ -165,6 +170,8 @@ class PointsPanel(bpy.types.Panel):
 
 
 class CurrentCameraSettings(bpy.types.Panel):
+    """Collapsable sub-panel for current tracking camera settings"""
+
     bl_label = "Current camera settings"
     bl_idname = "CLIP_PT_PNP_Current_Settings"
     bl_space_type = "CLIP_EDITOR"
@@ -221,6 +228,8 @@ class CurrentCameraSettings(bpy.types.Panel):
 
 
 class CalibratePanel(bpy.types.Panel):
+    """Panel for all camera calibration settings"""
+
     bl_label = "PNP - calibrate camera"
     bl_idname = "CLIP_PT_PNP_Calibrate"
     bl_space_type = "CLIP_EDITOR"
@@ -253,6 +262,8 @@ class CalibratePanel(bpy.types.Panel):
 
 
 class SolvePanel(bpy.types.Panel):
+    """Panel for all PNP solver settings"""
+
     bl_label = "PNP - Solve Pose"
     bl_idname = "CLIP_PT_PNP_Solve"
     bl_space_type = "CLIP_EDITOR"
@@ -297,6 +308,8 @@ class SolvePanel(bpy.types.Panel):
 
 
 class ExportPanel(bpy.types.Panel):
+    """Panel for all image match export settings"""
+
     bl_label = "Export"
     bl_idname = "CLIP_PT_Export"
     bl_space_type = "CLIP_EDITOR"
