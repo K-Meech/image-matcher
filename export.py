@@ -3,7 +3,7 @@ from bpy.types import Operator
 from mathutils import Vector, Quaternion
 import json
 import math
-import os
+
 
 def get_camera_position(camera_object, three_js=False):
     """Get camera position in XYZ order"""
@@ -12,13 +12,9 @@ def get_camera_position(camera_object, three_js=False):
 
     if three_js:
         # Account for Y-UP axis orientation
-        return [camera_location.x, 
-                camera_location.z, 
-                -camera_location.y]
+        return [camera_location.x, camera_location.z, -camera_location.y]
     else:
-        return [camera_location.x,
-                camera_location.y,
-                camera_location.z]
+        return [camera_location.x, camera_location.y, camera_location.z]
 
 
 def get_camera_quaternion(camera_object, three_js=False):
@@ -27,23 +23,21 @@ def get_camera_quaternion(camera_object, three_js=False):
     if three_js:
         # Convert to Y-UP - same way normal blender gltf exporter does
         camera_matrix = camera_object.matrix_world.copy()
-        correction = Quaternion((2**0.5/2, -2**0.5/2, 0.0, 0.0))
+        correction = Quaternion((2**0.5 / 2, -(2**0.5) / 2, 0.0, 0.0))
         camera_matrix @= correction.to_matrix().to_4x4()
         corrected_quaternion = camera_matrix.to_quaternion()
 
         # Account for Y-UP axis orientation
-        return [corrected_quaternion.x,
-                corrected_quaternion.z,
-                -corrected_quaternion.y,
-                corrected_quaternion.w
-                ]
+        return [
+            corrected_quaternion.x,
+            corrected_quaternion.z,
+            -corrected_quaternion.y,
+            corrected_quaternion.w,
+        ]
     else:
         quaternion = camera_object.rotation_quaternion
-        return [quaternion.w,
-                quaternion.x,
-                quaternion.y,
-                quaternion.z]
-    
+        return [quaternion.w, quaternion.x, quaternion.y, quaternion.z]
+
 
 def get_camera_lens(camera_object, three_js=False):
     """Get converted fov for threejs, or focal length for blender"""
@@ -57,27 +51,28 @@ def get_camera_lens(camera_object, three_js=False):
         aspect_ratio = width / height
 
         if width >= height:
-            if camera_data.sensor_fit != 'VERTICAL':
+            if camera_data.sensor_fit != "VERTICAL":
                 camera_fov = 2.0 * math.atan(
-                    math.tan(camera_data.angle * 0.5) / aspect_ratio)
+                    math.tan(camera_data.angle * 0.5) / aspect_ratio
+                )
             else:
                 camera_fov = camera_data.angle
         else:
-            if camera_data.sensor_fit != 'HORIZONTAL':
+            if camera_data.sensor_fit != "HORIZONTAL":
                 camera_fov = camera_data.angle
             else:
                 camera_fov = 2.0 * math.atan(
-                    math.tan(camera_data.angle * 0.5) / aspect_ratio)
-        
-    
+                    math.tan(camera_data.angle * 0.5) / aspect_ratio
+                )
+
         # Convert from radians to degrees
-        return camera_fov * (180/math.pi)
+        return camera_fov * (180 / math.pi)
     else:
         return camera_data.lens
 
 
 def convert_camera_settings(camera_object, model, three_js=False):
-    """ ThreeJS export options are based on the official blender 
+    """ThreeJS export options are based on the official blender
     GLTF exporter plugin"""
 
     camera_data = camera_object.data
@@ -95,8 +90,9 @@ def convert_camera_settings(camera_object, model, three_js=False):
     match["camera_near"] = camera_data.clip_start
     match["camera_far"] = camera_data.clip_end
 
-    match["centre_model_point"] = \
-                calculate_camera_intersection(camera_object, model, three_js)
+    match["centre_model_point"] = calculate_camera_intersection(
+        camera_object, model, three_js
+    )
 
     return match
 
@@ -108,9 +104,9 @@ def calculate_camera_intersection(camera_object, model, three_js):
     camera_direction = Vector((0, 0, -1))
     camera_direction.rotate(camera_object.rotation_euler)
     camera_direction.normalize()
-    
+
     # Needs any rotation/scaling etc of model to be applied!!
-    # If not I would need to convert the camera location / direction to the 
+    # If not I would need to convert the camera location / direction to the
     # mesh's local space for this to work properly
     cast_result = model.ray_cast(camera_object.location, camera_direction)
     # cast_result = model.ray_cast(Vector((0, 0, 100)), Vector((0, 0, -1)))
@@ -130,7 +126,7 @@ def export_to_json(matches, export_filepath):
 
     # Serializing json
     json_object = json.dumps(output, indent=4)
- 
+
     # Writing to sample.json
     json_filepath = bpy.path.abspath(export_filepath)
     if not json_filepath.endswith(".json"):
@@ -142,22 +138,22 @@ def export_to_json(matches, export_filepath):
 
 class OBJECT_OT_export_matches(Operator):
     """Create a new Mesh Object"""
+
     bl_idname = "imagematches.export_matches"
     bl_label = "Export matches"
     # bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-
         settings = context.scene.match_settings
 
         if settings.model is None:
-            self.report({'ERROR'}, "No 3D model selected")
-            return {'CANCELLED'}
-        
+            self.report({"ERROR"}, "No 3D model selected")
+            return {"CANCELLED"}
+
         if settings.export_filepath == "":
-            self.report({'ERROR'}, "No export filepath selected")
-            return {'CANCELLED'}
-        
+            self.report({"ERROR"}, "No export filepath selected")
+            return {"CANCELLED"}
+
         if settings.export_type == "THREEJS":
             three_js = True
         else:
@@ -174,4 +170,4 @@ class OBJECT_OT_export_matches(Operator):
 
         export_to_json(matches, settings.export_filepath)
 
-        return {'FINISHED'}
+        return {"FINISHED"}

@@ -17,12 +17,11 @@ def get_optical_centre(clip_camera):
 
 
 def get_2D_3D_point_coordinates(self, point_matches, clip):
-
     size = clip.size
     tracks = clip.tracking.objects[0].tracks
 
     if not tracks:
-        self.report({'ERROR'}, 'Please add markers for the 2D points')
+        self.report({"ERROR"}, "Please add markers for the 2D points")
         return np.array([]), np.array([])
 
     points_2d_coords = []
@@ -30,16 +29,21 @@ def get_2D_3D_point_coordinates(self, point_matches, clip):
     points_ignored = False
 
     for point_match in point_matches:
-        # Only process matches with both 2D and 3D point initialised - 
+        # Only process matches with both 2D and 3D point initialised -
         # rest ignored
-        if point_match.is_point_2d_initialised and point_match.is_point_3d_initialised:
+        if (
+            point_match.is_point_2d_initialised
+            and point_match.is_point_3d_initialised
+        ):
             points_3d_coords.append(point_match.point_3d.location)
 
             track = tracks[point_match.point_2d]
             # .co runs from 0 to 1 on each axis of the image, so multiply
             # by image size to get full coordinates
-            point_2d_coordinates = [track.markers[0].co[0]*size[0],
-                                    size[1]-track.markers[0].co[1]*size[1]]
+            point_2d_coordinates = [
+                track.markers[0].co[0] * size[0],
+                size[1] - track.markers[0].co[1] * size[1],
+            ]
 
             points_2d_coords.append(point_2d_coordinates)
 
@@ -47,25 +51,31 @@ def get_2D_3D_point_coordinates(self, point_matches, clip):
             points_ignored = True
 
     if points_ignored:
-        self.report({'WARNING'}, 'Ignoring points with only 2D or only 3D')
+        self.report({"WARNING"}, "Ignoring points with only 2D or only 3D")
 
-    points_2d_coords = np.asarray(points_2d_coords, dtype='double')
-    points_3d_coords = np.asarray(points_3d_coords, dtype='double')
+    points_2d_coords = np.asarray(points_2d_coords, dtype="double")
+    points_3d_coords = np.asarray(points_3d_coords, dtype="double")
 
     return points_2d_coords, points_3d_coords
 
 
 def get_distortion_coefficients(self, clip_camera):
-
-    # take radial distortion parameters: 
-    if clip_camera.distortion_model == 'POLYNOMIAL':
+    # take radial distortion parameters:
+    if clip_camera.distortion_model == "POLYNOMIAL":
         k1, k2, k3 = clip_camera.k1, clip_camera.k2, clip_camera.k3
-    elif clip_camera.distortion_model == 'BROWN':
-        k1, k2, k3 = clip_camera.brown_k1, clip_camera.brown_k2, clip_camera.brown_k3
+    elif clip_camera.distortion_model == "BROWN":
+        k1, k2, k3 = (
+            clip_camera.brown_k1,
+            clip_camera.brown_k2,
+            clip_camera.brown_k3,
+        )
     else:
         # Unsupported distortion model - just set to defaults of 0
         k1, k2, k3 = 0.0, 0.0, 0.0
-        self.report({'WARNING'}, 'Current distortion model is not supported, use Polynomial instead.')
+        self.report(
+            {"WARNING"},
+            "Current distortion model is not supported, use Polynomial instead.",
+        )
 
     # construct distortion vector, only k1,k2,k3 (polynomial or brown models)
     distortion_coefficients = np.array([k1, k2, 0, 0, k3])
@@ -74,20 +84,24 @@ def get_distortion_coefficients(self, clip_camera):
 
 
 def get_camera_intrinsics(clip_camera, clip_size):
-
     focal = clip_camera.focal_length_pixels
     optical_centre = get_optical_centre(clip_camera)
 
-     # construct camera intrinsics
-    camera_intrinsics = np.array([ [focal, 0, optical_centre[0]],
-                    [0, focal, clip_size[1]-optical_centre[1]],
-                    [0, 0, 1] ], dtype='double')
-    
+    # construct camera intrinsics
+    camera_intrinsics = np.array(
+        [
+            [focal, 0, optical_centre[0]],
+            [0, focal, clip_size[1] - optical_centre[1]],
+            [0, 0, 1],
+        ],
+        dtype="double",
+    )
+
     return camera_intrinsics
 
 
 def get_scene_info(self, context):
-    """get_scene_info collects information from the movie clip and its camera, 
+    """get_scene_info collects information from the movie clip and its camera,
     as well as 2D points and 3D points from the chosen collection"""
 
     settings = context.scene.match_settings
@@ -99,57 +113,79 @@ def get_scene_info(self, context):
     size = clip.size
     clip_camera = clip.tracking.camera
 
-    points_2D_coords, points_3d_coords = get_2D_3D_point_coordinates(self, current_image.point_matches, clip)
+    points_2D_coords, points_3d_coords = get_2D_3D_point_coordinates(
+        self, current_image.point_matches, clip
+    )
     camera_intrinsics = get_camera_intrinsics(clip_camera, size)
     distortion_coefficients = get_distortion_coefficients(self, clip_camera)
-    
-    return self, context, clip, points_3d_coords, points_2D_coords, \
-        camera_intrinsics, distortion_coefficients
+
+    return (
+        self,
+        context,
+        clip,
+        points_3d_coords,
+        points_2D_coords,
+        camera_intrinsics,
+        distortion_coefficients,
+    )
 
 
-def solve_pnp(self, context, clip, points_3d_coords, points_2d_coords, 
-              camera_intrinsics, distortion_coefficients):
+def solve_pnp(
+    self,
+    context,
+    clip,
+    points_3d_coords,
+    points_2d_coords,
+    camera_intrinsics,
+    distortion_coefficients,
+):
     """Main PnP solver function"""
 
     npoints = points_3d_coords.shape[0]
     size = clip.size
 
     if npoints < 4:
-        self.report({'ERROR'}, 'Not enough point pairs, use at least 4 markers to solve a camera pose.')
-        return {'CANCELLED'}
-    
+        self.report(
+            {"ERROR"},
+            "Not enough point pairs, use at least 4 markers to solve a camera pose.",
+        )
+        return {"CANCELLED"}
+
     # solve Perspective-n-Point
     ret, rvec, tvec, error = cv.solvePnPGeneric(
         points_3d_coords,
         points_2d_coords,
         camera_intrinsics,
         distortion_coefficients,
-        flags=cv.SOLVEPNP_SQPNP) # TODO: further investigation on other algorithms             
+        flags=cv.SOLVEPNP_SQPNP,
+    )  # TODO: further investigation on other algorithms
     rmat, _ = cv.Rodrigues(rvec[0])
 
     settings = context.scene.match_settings
-    settings.pnp_solve_msg = \
-        ("Reprojection Error: %.2f" %error) if ret else "solvePnP failed!"
-    
+    settings.pnp_solve_msg = (
+        ("Reprojection Error: %.2f" % error) if ret else "solvePnP failed!"
+    )
+
     # calculate projection errors for each point pair
-    print('dbg: calculating projections of 3d points...')
-    impoints, jacob = cv.projectPoints(points_3d_coords, rvec[0], tvec[0],
-                                       camera_intrinsics,
-                                       distortion_coefficients)
-    print('dbg: projection finished')
+    print("dbg: calculating projections of 3d points...")
+    impoints, jacob = cv.projectPoints(
+        points_3d_coords,
+        rvec[0],
+        tvec[0],
+        camera_intrinsics,
+        distortion_coefficients,
+    )
+    print("dbg: projection finished")
     print(impoints)
     print(jacob)
-    
+
     # get R and T matrices
     # https://blender.stackexchange.com/questions/38009/3x4-camera-matrix-from-blender-camera
     R_world2cv = Matrix(rmat.tolist())
     T_world2cv = Vector(tvec[0])
 
     # blender camera to opencv camera coordinate conversion
-    R_bcam2cv = Matrix(
-        ((1, 0, 0),
-         (0, -1, 0),
-         (0, 0, -1)))
+    R_bcam2cv = Matrix(((1, 0, 0), (0, -1, 0), (0, 0, -1)))
 
     # calculate transform in world coordinates
     R_cv2world = R_world2cv.transposed()
@@ -162,85 +198,123 @@ def solve_pnp(self, context, clip, points_3d_coords, points_2d_coords,
     tracking_camera = clip.tracking.camera
 
     camera_data = camera.data
-    camera_data.type = 'PERSP'
+    camera_data.type = "PERSP"
     camera_data.lens = tracking_camera.focal_length
     camera_data.sensor_width = tracking_camera.sensor_width
-    camera_data.sensor_height = tracking_camera.sensor_width*size[1]/size[0]
+    camera_data.sensor_height = (
+        tracking_camera.sensor_width * size[1] / size[0]
+    )
     render_size = [
-        context.scene.render.pixel_aspect_x * context.scene.render.resolution_x,
-        context.scene.render.pixel_aspect_y * context.scene.render.resolution_y]
-    camera_data.sensor_fit = 'HORIZONTAL' if render_size[0]/render_size[1] <= size[0]/size[1] else 'VERTICAL'
-    refsize = size[0] if render_size[0]/render_size[1] <= size[0]/size[1] else size[1]
+        context.scene.render.pixel_aspect_x
+        * context.scene.render.resolution_x,
+        context.scene.render.pixel_aspect_y
+        * context.scene.render.resolution_y,
+    ]
+    camera_data.sensor_fit = (
+        "HORIZONTAL"
+        if render_size[0] / render_size[1] <= size[0] / size[1]
+        else "VERTICAL"
+    )
+    refsize = (
+        size[0]
+        if render_size[0] / render_size[1] <= size[0] / size[1]
+        else size[1]
+    )
 
     optical_centre = get_optical_centre(tracking_camera)
-    camera_data.shift_x = (size[0]*0.5 - optical_centre[0])/refsize
-    camera_data.shift_y = (size[1]*0.5 - optical_centre[1])/refsize
-    
+    camera_data.shift_x = (size[0] * 0.5 - optical_centre[0]) / refsize
+    camera_data.shift_y = (size[1] * 0.5 - optical_centre[1]) / refsize
+
     camera_data.show_background_images = True
-    if not camera_data.background_images: 
+    if not camera_data.background_images:
         background_image = camera_data.background_images.new()
-    else: 
+    else:
         background_image = camera_data.background_images[0]
-    background_image.source = 'MOVIE_CLIP'
+    background_image.source = "MOVIE_CLIP"
     background_image.clip = clip
-    background_image.frame_method = 'FIT' 
-    background_image.display_depth = 'FRONT'
+    background_image.frame_method = "FIT"
+    background_image.display_depth = "FRONT"
     background_image.clip_user.use_render_undistorted = True
-    
+
     camera.matrix_world = Matrix.Translation(loc) @ rot.to_4x4()
     context.scene.camera = camera
-    
-    return {'FINISHED'}
+
+    return {"FINISHED"}
 
 
-def calibrate_camera(self, context, clip, points_3d_coords, points_2d_coords,
-                     camera_intrinsics, distortion_coefficients): 
+def calibrate_camera(
+    self,
+    context,
+    clip,
+    points_3d_coords,
+    points_2d_coords,
+    camera_intrinsics,
+    distortion_coefficients,
+):
     """Main calibration solver function"""
-    
-    settings = context.scene.match_settings 
+
+    settings = context.scene.match_settings
     npoints = points_3d_coords.shape[0]
     size = clip.size
 
     if npoints < 6:
-        self.report({'ERROR'},
-                    'Not enough point pairs, use at least 6 markers to calibrate a camera.')
-        return {'CANCELLED'}
+        self.report(
+            {"ERROR"},
+            "Not enough point pairs, use at least 6 markers to calibrate a camera.",
+        )
+        return {"CANCELLED"}
 
     flags = (
-        cv.CALIB_USE_INTRINSIC_GUESS + 
-        cv.CALIB_FIX_ASPECT_RATIO + 
-        cv.CALIB_ZERO_TANGENT_DIST + 
-        (cv.CALIB_FIX_PRINCIPAL_POINT if not settings.calibrate_principal_point else 0) + 
-        (cv.CALIB_FIX_FOCAL_LENGTH if not settings.calibrate_focal_length else 0) + 
-        (cv.CALIB_FIX_K1 if not settings.calibrate_distortion_k1 else 0) + 
-        (cv.CALIB_FIX_K2 if not settings.calibrate_distortion_k2 else 0) + 
-        (cv.CALIB_FIX_K3 if not settings.calibrate_distortion_k3 else 0))
-    
-    ret, camera_intrinsics, distortion_coefficients, _, _ = \
-        cv.calibrateCamera(
-            np.asarray([points_3d_coords], dtype='float32'),
-            np.asarray([points_2d_coords], dtype='float32'),
-            size,
-            camera_intrinsics,
-            distortion_coefficients,
-            flags=flags)
-         
-    settings.pnp_calibrate_msg = ("Reprojection Error: %.2f" %ret)
-    
+        cv.CALIB_USE_INTRINSIC_GUESS
+        + cv.CALIB_FIX_ASPECT_RATIO
+        + cv.CALIB_ZERO_TANGENT_DIST
+        + (
+            cv.CALIB_FIX_PRINCIPAL_POINT
+            if not settings.calibrate_principal_point
+            else 0
+        )
+        + (
+            cv.CALIB_FIX_FOCAL_LENGTH
+            if not settings.calibrate_focal_length
+            else 0
+        )
+        + (cv.CALIB_FIX_K1 if not settings.calibrate_distortion_k1 else 0)
+        + (cv.CALIB_FIX_K2 if not settings.calibrate_distortion_k2 else 0)
+        + (cv.CALIB_FIX_K3 if not settings.calibrate_distortion_k3 else 0)
+    )
+
+    ret, camera_intrinsics, distortion_coefficients, _, _ = cv.calibrateCamera(
+        np.asarray([points_3d_coords], dtype="float32"),
+        np.asarray([points_2d_coords], dtype="float32"),
+        size,
+        camera_intrinsics,
+        distortion_coefficients,
+        flags=flags,
+    )
+
+    settings.pnp_calibrate_msg = "Reprojection Error: %.2f" % ret
+
     # set picture and camera metrics
     tracking_camera = clip.tracking.camera
 
     if settings.calibrate_focal_length:
-        tracking_camera.focal_length_pixels = camera_intrinsics[0][0] 
+        tracking_camera.focal_length_pixels = camera_intrinsics[0][0]
 
     if settings.calibrate_principal_point:
-        optical_centre = [camera_intrinsics[0][2], size[1]-camera_intrinsics[1][2]]
+        optical_centre = [
+            camera_intrinsics[0][2],
+            size[1] - camera_intrinsics[1][2],
+        ]
         if bpy.app.version < (3, 5, 0):
             tracking_camera.principal = optical_centre
         else:
             tracking_camera.principal_point_pixels = optical_centre
 
-    if settings.calibrate_distortion_k1 or settings.calibrate_distortion_k2 or settings.calibrate_distortion_k3:
+    if (
+        settings.calibrate_distortion_k1
+        or settings.calibrate_distortion_k2
+        or settings.calibrate_distortion_k3
+    ):
         tracking_camera.k1 = distortion_coefficients[0]
         tracking_camera.k2 = distortion_coefficients[1]
         tracking_camera.k3 = distortion_coefficients[4]
@@ -248,20 +322,22 @@ def calibrate_camera(self, context, clip, points_3d_coords, points_2d_coords,
         tracking_camera.brown_k2 = distortion_coefficients[1]
         tracking_camera.brown_k3 = distortion_coefficients[4]
 
-    return {'FINISHED'}
+    return {"FINISHED"}
 
 
 class PNP_OT_pose_camera(bpy.types.Operator):
     bl_idname = "pnp.solve_pnp"
     bl_label = "Solve camera extrinsics"
-    bl_options = {'UNDO'}
-    bl_description = "Solve camera extrinsics using available markers and 3D points"
-    
+    bl_options = {"UNDO"}
+    bl_description = (
+        "Solve camera extrinsics using available markers and 3D points"
+    )
+
     def execute(self, context):
-        if context.object.mode != 'OBJECT':
-            self.report({'ERROR'}, 'Please switch to Object Mode')
-            return {'CANCELLED'}
-        
+        if context.object.mode != "OBJECT":
+            self.report({"ERROR"}, "Please switch to Object Mode")
+            return {"CANCELLED"}
+
         # call solver
         return solve_pnp(*get_scene_info(self, context))
 
@@ -269,13 +345,15 @@ class PNP_OT_pose_camera(bpy.types.Operator):
 class PNP_OT_calibrate_camera(bpy.types.Operator):
     bl_idname = "pnp.calibrate_camera"
     bl_label = "Solve camera intrinsics"
-    bl_options = {'UNDO'}
-    bl_description = "Solve camera intrinsics using available markers and 3D points"
-    
+    bl_options = {"UNDO"}
+    bl_description = (
+        "Solve camera intrinsics using available markers and 3D points"
+    )
+
     def execute(self, context):
-        if context.object.mode != 'OBJECT':
-            self.report({'ERROR'}, 'Please switch to Object Mode')
-            return {'CANCELLED'}
-        
+        if context.object.mode != "OBJECT":
+            self.report({"ERROR"}, "Please switch to Object Mode")
+            return {"CANCELLED"}
+
         # call solver
         return calibrate_camera(*get_scene_info(self, context))
