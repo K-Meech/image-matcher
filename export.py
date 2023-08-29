@@ -36,9 +36,10 @@ def get_camera_quaternion(camera_object, three_js=False):
         Quaternion as [W, X, Y, Z] for Blender, or [X, Y, Z, W] for three-js
     """
 
+    camera_matrix = camera_object.matrix_world.copy()
+
     if three_js:
         # Convert to Y-UP - same way normal blender gltf exporter does
-        camera_matrix = camera_object.matrix_world.copy()
         correction = Quaternion((2**0.5 / 2, -(2**0.5) / 2, 0.0, 0.0))
         camera_matrix @= correction.to_matrix().to_4x4()
         corrected_quaternion = camera_matrix.to_quaternion()
@@ -51,7 +52,7 @@ def get_camera_quaternion(camera_object, three_js=False):
             corrected_quaternion.w,
         ]
     else:
-        quaternion = camera_object.rotation_quaternion
+        quaternion = camera_matrix.to_quaternion()
         return [quaternion.w, quaternion.x, quaternion.y, quaternion.z]
 
 
