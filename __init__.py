@@ -19,7 +19,7 @@ from . import dependency
 from .image import IMAGE_OT_add_image, IMAGE_OT_swap_image, \
     IMAGE_OT_point_mode, IMAGE_OT_add_3d_point, IMAGE_OT_add_2d_point, \
         IMAGE_OT_delete_3d_point, IMAGE_OT_delete_2d_point, \
-        IMAGE_OT_toggle_camera_view
+        IMAGE_OT_toggle_camera_view, IMAGE_OT_update_3d_point_size
 
 
 def update_active_point_match(self, context):
@@ -175,6 +175,11 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         description="Name for collection of 3D points",
         default="points-3d")
     
+    point_3d_display_size: bpy.props.FloatProperty(
+        name="Point 3D display size",
+        description="Display size of empty sphere representing 3D point",
+        default=0.1)
+    
     calibrate_focal_length: bpy.props.BoolProperty(
         name="Calibrate focal length",
         description="Whether to calibrate the focal length",
@@ -316,6 +321,12 @@ class PointsPanel(bpy.types.Panel):
         row = layout.row(align=True)
         row.label(text="3D model :")
         row.prop(settings, "model", text="")
+
+        row = layout.row(align=True).split(factor=0.7, align=True)
+        row.prop(settings, "point_3d_display_size", text="3D point size")
+        row.operator("imagematches.update_3d_point_size", text="Update")
+        # Bit of space between the display size and point mode
+        row = layout.row()
 
         row = layout.row()
         row.label(text="Click to add, Ctrl + click to delete")
@@ -570,7 +581,8 @@ def register_classes(unregister=False):
                IMAGE_OT_add_2d_point,
                IMAGE_OT_delete_3d_point,
                IMAGE_OT_delete_2d_point,
-               IMAGE_OT_toggle_camera_view
+               IMAGE_OT_toggle_camera_view,
+               IMAGE_OT_update_3d_point_size
                ]
     
     if unregister:

@@ -287,7 +287,7 @@ class IMAGE_OT_add_3d_point(bpy.types.Operator):
 
                 empty = bpy.data.objects.new("empty", None)
                 empty.empty_display_type = "SPHERE"
-                empty.empty_display_size = 0.1
+                empty.empty_display_size = settings.point_3d_display_size
                 empty.location = best_hit
 
                 current_image = settings.image_matches[settings.current_image_name]
@@ -588,6 +588,22 @@ class IMAGE_OT_toggle_camera_view(bpy.types.Operator):
         
         with context.temp_override(window=window_3d, area=area_3d, region=region_3d):
             bpy.ops.view3d.view_camera()
+        
+        return {'FINISHED'}
+    
+
+class IMAGE_OT_update_3d_point_size(bpy.types.Operator):
+    bl_idname = "imagematches.update_3d_point_size"
+    bl_label = "Update 3D point size"
+    bl_description = "Update 3D point size"
+    
+    def execute(self, context):
+        settings = context.scene.match_settings
+
+        for image_match in settings.image_matches:
+            for point_match in image_match.point_matches:
+                if point_match.is_point_3d_initialised:
+                    point_match.point_3d.empty_display_size = settings.point_3d_display_size
         
         return {'FINISHED'}
                     
