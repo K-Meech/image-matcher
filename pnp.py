@@ -128,7 +128,7 @@ def solve_pnp(self, context, clip, points_3d_coords, points_2d_coords,
     rmat, _ = cv.Rodrigues(rvec[0])
 
     settings = context.scene.match_settings
-    settings.pnp_msg = \
+    settings.pnp_solve_msg = \
         ("Reprojection Error: %.2f" %error) if ret else "solvePnP failed!"
     
     # calculate projection errors for each point pair
@@ -225,7 +225,7 @@ def calibrate_camera(self, context, clip, points_3d_coords, points_2d_coords,
             distortion_coefficients,
             flags=flags)
          
-    settings.pnp_msg = ("Reprojection Error: %.2f" %ret)
+    settings.pnp_calibrate_msg = ("Reprojection Error: %.2f" %ret)
     
     # set picture and camera metrics
     tracking_camera = clip.tracking.camera

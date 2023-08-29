@@ -50,7 +50,12 @@ def force_redraw(self, context):
     ensures that as 3D points are added, they immediately show up in the 
     UI list"""
     pass
-            
+
+
+def current_image_initialised(context):
+    settings = context.scene.match_settings
+    return settings.current_image_name != ""
+
 
 class PointMatch(bpy.types.PropertyGroup):
     """Group of properties representing a 2D-3D point match"""
@@ -195,7 +200,12 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         description="Whether to calibrate radial distortion K3",
         default=False)
     
-    pnp_msg: bpy.props.StringProperty(
+    pnp_calibrate_msg: bpy.props.StringProperty(
+        name="Information",
+        description="Calibration Output Message",
+        default="")
+    
+    pnp_solve_msg: bpy.props.StringProperty(
         name="Information",
         description="Solver Output Message",
         default="")
@@ -224,7 +234,7 @@ class POINT_UL_UI(bpy.types.UIList):
         row = layout.row()
 
         col = layout.column()
-        col.label(text="", icon=icon)
+        col.label(text=f"{index + 1}", icon=icon)
 
         col = layout.column()
         col.enabled = False
@@ -263,7 +273,7 @@ class IMAGE_UL_UI(bpy.types.UIList):
 
 class ImagePanel(bpy.types.Panel):
     bl_label = "Add / Change Image"
-    bl_idname = "VIEW3D_PT_AddImage"
+    bl_idname = "CLIP_PT_AddImage"
     bl_space_type = "CLIP_EDITOR"
     bl_region_type = "TOOLS"
     bl_category = "Image Match"
@@ -290,15 +300,14 @@ class ImagePanel(bpy.types.Panel):
 
 class PointsPanel(bpy.types.Panel):
     bl_label = "Points"
-    bl_idname = "VIEW3D_PT_Points"
+    bl_idname = "CLIP_PT_Points"
     bl_space_type = "CLIP_EDITOR"
     bl_region_type = "TOOLS"
     bl_category = "Image Match"
 
     @classmethod 
     def poll(self, context):
-        settings = context.scene.match_settings
-        return settings.current_image_name != ""
+        return current_image_initialised(context)
 
     def draw(self, context):
         layout = self.layout
@@ -323,22 +332,77 @@ class PointsPanel(bpy.types.Panel):
         row.template_list("POINT_UL_UI", "Point_List", current_image, "point_matches", current_image, "active_point_index")
 
 
-class PnpPanel(bpy.types.Panel):
-    bl_label = "PNP"
-    bl_idname = "VIEW3D_PT_PNP"
+class CurrentCameraSettings(bpy.types.Panel):
+    bl_label = "Current camera settings"
+    bl_idname = "CLIP_PT_PNP_Current_Settings"
+    bl_space_type = 'CLIP_EDITOR'
+    bl_region_type = 'TOOLS'
+    bl_category = "Image Match"
+    
+    bl_parent_id = 'CLIP_PT_PNP_Calibrate'
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+
+        settings = context.scene.match_settings
+        current_image = settings.image_matches[settings.current_image_name]
+        camera = current_image.movie_clip.tracking.camera
+
+        col = layout.column()
+
+        # Same as layout in right panel of clip editor under Track >
+        # Camera > Lens
+        if camera.units == 'MILLIMETERS':
+            col.prop(camera, "focal_length")
+        else:
+            col.prop(camera, "focal_length_pixels")
+        col.prop(camera, "units", text="Units")
+
+        col = layout.column()
+        col.prop(camera, "principal_point", text="Optical Center")
+
+        col = layout.column()
+        col.prop(camera, "distortion_model", text="Lens Distortion")
+        if camera.distortion_model == 'POLYNOMIAL':
+            col = layout.column(align=True)
+            col.prop(camera, "k1")
+            col.prop(camera, "k2")
+            col.prop(camera, "k3")
+        elif camera.distortion_model == 'DIVISION':
+            col = layout.column(align=True)
+            col.prop(camera, "division_k1")
+            col.prop(camera, "division_k2")
+        elif camera.distortion_model == 'NUKE':
+            col = layout.column(align=True)
+            col.prop(camera, "nuke_k1")
+            col.prop(camera, "nuke_k2")
+        elif camera.distortion_model == 'BROWN':
+            col = layout.column(align=True)
+            col.prop(camera, "brown_k1")
+            col.prop(camera, "brown_k2")
+            col.prop(camera, "brown_k3")
+            col.prop(camera, "brown_k4")
+            col.separator()
+            col.prop(camera, "brown_p1")
+            col.prop(camera, "brown_p2")
+
+
+class CalibratePanel(bpy.types.Panel):
+    bl_label = "PNP - calibrate camera"
+    bl_idname = "CLIP_PT_PNP_Calibrate"
     bl_space_type = "CLIP_EDITOR"
     bl_region_type = "TOOLS"
     bl_category = "Image Match"
+    bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod 
     def poll(self, context):
-        settings = context.scene.match_settings
-        return settings.current_image_name != ""
+        return current_image_initialised(context)
 
     def draw(self, context):
         layout = self.layout
         settings = context.scene.match_settings
-        current_image = settings.image_matches[settings.current_image_name]
         
         col = layout.column(heading="Calibrate", align=True)
         col.prop(settings, "calibrate_focal_length", text="Focal Length")
@@ -351,19 +415,38 @@ class PnpPanel(bpy.types.Panel):
         
         col = layout.column(align=True)
         col.operator("pnp.calibrate_camera", text="Calibrate Camera")
-        
-        row = layout.row(align=True)
-        row.label(text="Solve")
+
+        row = layout.row()
+        row.label(text=settings.pnp_calibrate_msg)
+
+
+class SolvePanel(bpy.types.Panel):
+    bl_label = "PNP - Solve Pose"
+    bl_idname = "CLIP_PT_PNP_Solve"
+    bl_space_type = "CLIP_EDITOR"
+    bl_region_type = "TOOLS"
+    bl_category = "Image Match"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod 
+    def poll(self, context):
+        return current_image_initialised(context)
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.match_settings
+        current_image = settings.image_matches[settings.current_image_name]
 
         row = layout.row()
         row.operator("pnp.solve_pnp", text="Solve Camera Pose")
         row.scale_y = 2.0
 
         row = layout.row()
-        row.label(text=settings.pnp_msg)
+        row.label(text=settings.pnp_solve_msg)
 
         row = layout.row()
         row.operator("imagematches.toggle_camera", text="Toggle camera view", icon="VIEW_CAMERA")
+        row = layout.row()
         row.prop(current_image.camera.data, "show_background_images", text="Show matched image")
         row = layout.row()
         row.prop(current_image.camera.data.background_images[0], "alpha", text="Image opacity")
@@ -371,15 +454,15 @@ class PnpPanel(bpy.types.Panel):
 
 class ExportPanel(bpy.types.Panel):
     bl_label = "Export"
-    bl_idname = "VIEW3D_PT_Export"
+    bl_idname = "CLIP_PT_Export"
     bl_space_type = "CLIP_EDITOR"
     bl_region_type = "TOOLS"
     bl_category = "Image Match"
+    bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod 
     def poll(self, context):
-        settings = context.scene.match_settings
-        return settings.current_image_name != ""
+        return current_image_initialised(context)
 
     def draw(self, context):
         layout = self.layout
@@ -473,7 +556,9 @@ def register_classes(unregister=False):
                PNP_OT_pose_camera,
                ImagePanel,
                PointsPanel,
-               PnpPanel,
+               CalibratePanel,
+               SolvePanel,
+               CurrentCameraSettings,
                ExportPanel,
                IMAGE_OT_add_image,
                IMAGE_OT_swap_image,
