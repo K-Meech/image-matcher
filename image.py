@@ -543,12 +543,17 @@ class IMAGE_OT_point_mode(bpy.types.Operator):
         
         elif event.type in {'RIGHTMOUSE', 'ESC'}:
             settings.point_mode_enabled = False
-            return {'CANCELLED'}
+            return {'FINISHED'}
 
         return {'RUNNING_MODAL'}
 
     def invoke(self, context, event):
         settings = context.scene.match_settings
+
+        if settings.model is None:
+            self.report({'ERROR'}, "No 3D model selected")
+            settings.point_mode_enabled = False
+            return {'CANCELLED'}
 
         # Find clip editor area
         self.window_clip, self.area_clip, self.region_clip = find_area(context, "CLIP_EDITOR")
@@ -565,12 +570,8 @@ class IMAGE_OT_point_mode(bpy.types.Operator):
             return {'CANCELLED'}
 
         context.window_manager.modal_handler_add(self)
+        settings.point_mode_enabled = True
         return {'RUNNING_MODAL'}
-
-
-def set_point_mode(self, context):
-    if self.point_mode_enabled:
-        bpy.ops.imagematches.point_mode('INVOKE_DEFAULT')
 
     
 class IMAGE_OT_toggle_camera_view(bpy.types.Operator):

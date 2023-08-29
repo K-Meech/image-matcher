@@ -18,7 +18,7 @@ from .export import OBJECT_OT_export_matches
 from . import dependency
 from .image import IMAGE_OT_add_image, IMAGE_OT_swap_image, \
     IMAGE_OT_point_mode, IMAGE_OT_add_3d_point, IMAGE_OT_add_2d_point, \
-        IMAGE_OT_delete_3d_point, IMAGE_OT_delete_2d_point, set_point_mode, \
+        IMAGE_OT_delete_3d_point, IMAGE_OT_delete_2d_point, \
         IMAGE_OT_toggle_camera_view
 
 
@@ -47,7 +47,7 @@ def update_active_point_match(self, context):
 
 def force_redraw(self, context):
     """This empty update function makes Blender re-draw the panel, which 
-    ensures that as 3D points are added, they immediately show up in the 
+    ensures that e.g. as 3D points are added, they immediately show up in the 
     UI list"""
     pass
 
@@ -220,7 +220,7 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
         name="Point mode enabled",
         description="Point mode enabled",
         default=False,
-        update=set_point_mode
+        update=force_redraw
     )
 
 
@@ -317,6 +317,9 @@ class PointsPanel(bpy.types.Panel):
         row.label(text="3D model :")
         row.prop(settings, "model", text="")
 
+        row = layout.row()
+        row.label(text="Click to add, Ctrl + click to delete")
+
         if not settings.point_mode_enabled:
             mode_icon = "PLAY"
             mode_txt = 'Point mode'
@@ -325,7 +328,7 @@ class PointsPanel(bpy.types.Panel):
             mode_txt = 'Right click or ESC to cancel'
         
         row = layout.row(align=True)
-        row.prop(settings, 'point_mode_enabled', text=mode_txt, icon=mode_icon, toggle=True)
+        row.operator("imagematches.point_mode", text=mode_txt, icon=mode_icon, depress=settings.point_mode_enabled)
 
         row = layout.row()
         current_image = settings.image_matches[settings.current_image_name]
