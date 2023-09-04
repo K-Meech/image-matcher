@@ -94,9 +94,9 @@ def register_classes(unregister=False):
         Defaults to False.
     """
 
-    # These classes are imported inside this function (and not at top of doc)
-    # as they are dependent on opencv installation
-    from .pnp import PNP_OT_calibrate_camera, PNP_OT_pose_camera
+    # pnp is imported inside this function (and not at top of doc)
+    # as it is dependent on opencv installation
+    from . import pnp
 
     classes = [
         props.PointMatch,
@@ -105,8 +105,9 @@ def register_classes(unregister=False):
         ui.IMAGE_UL_UI,
         props.ImageMatchSettings,
         export.OBJECT_OT_export_matches,
-        PNP_OT_calibrate_camera,
-        PNP_OT_pose_camera,
+        pnp.PNP_OT_calibrate_camera,
+        pnp.PNP_OT_pose_camera,
+        pnp.PNP_OT_reset_camera,
         ui.ImagePanel,
         ui.PointsPanel,
         ui.CalibratePanel,

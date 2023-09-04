@@ -18,6 +18,15 @@ def get_optical_centre(clip_camera):
     return optical_centre
 
 
+def set_optical_centre(clip_camera, optical_centre):
+    """Set optical centre of given camera"""
+
+    if bpy.app.version < (3, 5, 0):
+        clip_camera.principal = optical_centre
+    else:
+        clip_camera.principal_point_pixels = optical_centre
+
+
 def get_2D_3D_point_coordinates(self, point_matches, clip):
     """Get coordinates of all 2D-3D point matches. Discards any matches with
     only a 2D point or only a 3D point.
@@ -369,10 +378,7 @@ def calibrate_camera(
             camera_intrinsics[0][2],
             size[1] - camera_intrinsics[1][2],
         ]
-        if bpy.app.version < (3, 5, 0):
-            tracking_camera.principal = optical_centre
-        else:
-            tracking_camera.principal_point_pixels = optical_centre
+        set_optical_centre(tracking_camera, optical_centre)
 
     if (
         settings.calibrate_distortion_k1
@@ -387,6 +393,32 @@ def calibrate_camera(
         tracking_camera.brown_k3 = distortion_coefficients[4]
 
     return {"FINISHED"}
+
+
+class PNP_OT_reset_camera(bpy.types.Operator):
+    """Reset camera intrinsics to default values"""
+
+    bl_idname = "pnp.reset_camera"
+    bl_label = "Rest camera intrinsics"
+    bl_options = {"UNDO"}
+
+    def execute(self, context):
+        settings = context.scene.match_settings
+        current_image = settings.image_matches[settings.current_image_name]
+        clip = current_image.movie_clip
+
+        tracking_camera = clip.tracking.camera
+        tracking_camera.focal_length = 24.0
+        tracking_camera.principal_point = [0.0, 0.0]
+
+        tracking_camera.k1 = 0.0
+        tracking_camera.k2 = 0.0
+        tracking_camera.k3 = 0.0
+        tracking_camera.brown_k1 = 0.0
+        tracking_camera.brown_k2 = 0.0
+        tracking_camera.brown_k3 = 0.0
+
+        return {"FINISHED"}
 
 
 class PNP_OT_pose_camera(bpy.types.Operator):

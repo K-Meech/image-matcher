@@ -260,6 +260,9 @@ class CalibratePanel(bpy.types.Panel):
         row = layout.row()
         row.label(text=settings.pnp_calibrate_msg)
 
+        row = layout.row(align=True)
+        row.operator("pnp.reset_camera", text="Reset Camera")
+
 
 class SolvePanel(bpy.types.Panel):
     """Panel for all PNP solver settings"""

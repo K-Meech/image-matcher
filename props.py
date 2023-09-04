@@ -200,11 +200,13 @@ class ImageMatchSettings(bpy.types.PropertyGroup):
     pnp_calibrate_msg: bpy.props.StringProperty(
         name="Information",
         description="Calibration Output Message",
-        default="",
+        default="Reprojection Error: -",
     )
 
     pnp_solve_msg: bpy.props.StringProperty(
-        name="Information", description="Solver Output Message", default=""
+        name="Information", 
+        description="Solver Output Message", 
+        default="Reprojection Error: -"
     )
 
     image_filepath: bpy.props.StringProperty(
