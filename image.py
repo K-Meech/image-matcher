@@ -99,8 +99,11 @@ class IMAGE_OT_add_image(bpy.types.Operator):
         image_match.image_collection = image_collection
         image_match.points_3d_collection = point_collection
 
+        # Hide any currently shown 3D points
+        swap_point_matches(settings.image_matches, 
+                           settings.current_image_name, image_match.name)
         settings.current_image_name = image_match.name
-
+        
         return {"FINISHED"}
 
 
@@ -124,6 +127,8 @@ class IMAGE_OT_swap_image(bpy.types.Operator):
         image_match = settings.image_matches[self.image_name]
 
         open_movie_clip(image_match.movie_clip)
+        swap_point_matches(settings.image_matches, 
+                           settings.current_image_name, self.image_name)
         settings.current_image_name = self.image_name
 
         context.scene.camera = image_match.camera
@@ -246,6 +251,21 @@ def delete_point_if_empty(point_matches, index):
     point = point_matches[index]
     if not point.is_point_2d_initialised and not point.is_point_3d_initialised:
         point_matches.remove(index)
+
+
+def swap_point_matches(image_matches, old_image_name, new_image_name):
+    """Hide all point_matches of old_image_name, and show all point_matches
+    of new_image_name"""
+
+    if old_image_name in image_matches:
+        for point_match in image_matches[old_image_name].point_matches:
+            if point_match.is_point_3d_initialised:
+                point_match.point_3d.hide_set(True)
+
+    if new_image_name in image_matches:
+        for point_match in image_matches[new_image_name].point_matches:
+            if point_match.is_point_3d_initialised:
+                point_match.point_3d.hide_set(False)
 
 
 class IMAGE_OT_add_3d_point(bpy.types.Operator):

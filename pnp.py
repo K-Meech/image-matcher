@@ -397,7 +397,9 @@ class PNP_OT_pose_camera(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def execute(self, context):
-        if context.object.mode != "OBJECT":
+        settings = context.scene.match_settings
+
+        if settings.model.mode != "OBJECT":
             self.report({"ERROR"}, "Please switch to Object Mode")
             return {"CANCELLED"}
 
@@ -413,7 +415,9 @@ class PNP_OT_calibrate_camera(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     def execute(self, context):
-        if context.object.mode != "OBJECT":
+        settings = context.scene.match_settings
+
+        if settings.model.mode != "OBJECT":
             self.report({"ERROR"}, "Please switch to Object Mode")
             return {"CANCELLED"}
 
