@@ -90,6 +90,7 @@ class IMAGE_OT_add_image(bpy.types.Operator):
 
         camera_object = bpy.data.objects.new("Camera", camera_data)
         image_collection.objects.link(camera_object)
+        context.scene.camera = camera_object
 
         image_match = settings.image_matches.add()
         image_match.name = short_name

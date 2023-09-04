@@ -293,6 +293,17 @@ class SolvePanel(bpy.types.Panel):
             text="Toggle camera view",
             icon="VIEW_CAMERA",
         )
+        row = layout.row(align=True)
+        row.prop(
+            current_image.camera.data,
+            "clip_start",
+            text="Clip start",
+        )
+        row.prop(
+            current_image.camera.data,
+            "clip_end",
+            text="Clip end",
+        )
         row = layout.row()
         row.prop(
             current_image.camera.data,
