@@ -14,3 +14,8 @@ This plugin adds:
 - Export of camera parameters to JSON
 
 For more information on the Perspective-n-Point process, see OpenCV's documentation: https://docs.opencv.org/4.x/d5/d1f/calib3d_solvePnP.html
+
+## Tutorials
+
+- For installation instructions, see: [Installation](./docs/installation.md)
+- For a step by step tutorial of image matching, see: [Image matching tutorial](./docs/image-matching.md)
