@@ -2,7 +2,7 @@ bl_info = {
     "name": "Image Matcher",
     "author": "Kimberly Meechan",
     "version": (1, 0),
-    "blender": (3, 5, 1),
+    "blender": (3, 6, 2),
     "location": "Clip Editor > Tools > Solve > Image Matcher",
     "description": "Matches 2D images to the 3D model (builds on RT Studio's Camera Pnpoint plugin)",
     "warning": "",
