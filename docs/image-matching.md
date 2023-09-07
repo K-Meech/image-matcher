@@ -13,7 +13,6 @@ For the 3D model, I use the .obj format one named 'ramesses_II_1million.obj'. Fo
 ## Saving your Blender file
 
 Open Blender, click File > Save As.. and select a location to save your file.
-
 Make sure you save regularly with File > Save, or Ctrl + S!
 
 Note that Blender uses relative filepaths, so if you later move your Blender file you will likely break some links to images or 3D models.
@@ -23,10 +22,7 @@ Note that Blender uses relative filepaths, so if you later move your Blender fil
 You'll need two windows to use the add-on: one to view 2D images and one to view the 3D model.
 
 To create this, hover your mouse over the top left corner of the 3D viewer until it turns into a cross.
-
-Click and drag to the right to split your screen into two windows. Then click on the icon in the top left and select 'Movie clip editor'.
-
-Then select the 'Image Match' tab on the left side.
+Click and drag to the right to split your screen into two windows. Then click on the icon in the top left and select 'Movie clip editor'. Finally, select the 'Image Match' tab on the left side.
 
 ![Gif showing creating the workspace](./images/workspace.gif)
 
@@ -46,9 +42,9 @@ To show the textures of the 3D model, click the 'Viewport Shading' button in the
 
 ## Navigating the 3D viewer
 
-- Rotate: Middle click and drag
-- Pan: Shift + Middle click and drag
-- Zoom: Scroll
+- **Rotate**: Middle click and drag
+- **Pan**: Shift + Middle click and drag
+- **Zoom**: Scroll
 
 To reset the 3D view, click on your 3D model then press '.' on the keyboard numpad, or View > Frame Selected from the menu. To reset the viewing angle also, click '1' on the keyboard numpad, or View > Viewpoint > Front.
 
@@ -62,8 +58,8 @@ Then click the 'Add image' button to open it in the viewer. You will see the ima
 
 ## Navigating the 2D viewer
 
-- Pan: Middle click and drag
-- Zoom: Scroll
+- **Pan**: Middle click and drag
+- **Zoom**: Scroll
 
 ## Adding corresponding points (Points tab)
 
@@ -105,7 +101,7 @@ If you don't know the focal length, or you're not achieving a good match at late
 
 Now we can solve the camera 'extrinsics' i.e. its position and orientation in 3D space, using OpenCV. To do this, click the 'Solve Camera Pose' button. The 'Reprojection error' provided below the button gives an estimate of how well this worked - lower numbers are better.
 
-To view the match, click the 'Toggle camera view' button. This will enter the matched camera (in the right window) and show the 2D image over the 3D model. You can toggle the 2D image on and off, but checking/un-checking the 'Show matched image' button. You can also adjust the 2D image opacity with the slider below. If you can't see the 3D model, is likely an issue with the camera clip distance. You can adjust this under the 'Toggle camera view' button - for example, for this 3D model I changed the 'Clip end' to 2000m.
+To view the match, click the 'Toggle camera view' button. This will enter the matched camera (in the right window) and show the 2D image over the 3D model. You can toggle the 2D image on and off, by checking/un-checking the 'Show matched image' button. You can also adjust the 2D image opacity with the slider below. If you can't see the 3D model, it is likely an issue with the camera clip distance. You can adjust this under the 'Toggle camera view' button - for example, for this 3D model I changed the 'Clip end' to 2000m.
 
 ![Screenshot of fully matched image](./images/matched-image.gif)
 
@@ -123,9 +119,7 @@ Once you've changed your points, make sure you 'Reset Camera' (in the PNP-calibr
 
 The camera positions of all matched images can be exported to JSON format.
 
-First, make sure the correct 3D model is selected, then click on the folder icon next to 'Export filepath' to select a location to save the Json file. 
-
-Then choose the export type - either Blender or ThreeJS. Selecting ThreeJS will convert the coordinates/camera parameters to ones compatible with three.js.
+First, make sure the correct 3D model is selected, then click on the folder icon next to 'Export filepath' to select a location to save the Json file. Then choose the export type - either Blender or ThreeJS. Selecting ThreeJS will convert the coordinates/camera parameters to ones compatible with three.js.
 
 Finally, click 'Export matches' to create the Json file in the chosen location.
 
