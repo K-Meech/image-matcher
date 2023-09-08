@@ -1,0 +1,27 @@
+name: Zip release excluding docs
+
+on: 
+  # Only trigger on push to main with a version tag
+  push:
+    branches:
+      - main
+    tags:
+      - "v*.*.*"
+
+jobs:
+  Zip-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+
+      - name: Check out repository code
+        uses: actions/checkout@v3
+        
+      - name: Only zip python files
+        run: zip image-matcher.zip *.py
+        
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: image-matcher.zip
+  
