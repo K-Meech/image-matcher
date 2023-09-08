@@ -1,15 +1,16 @@
 name: Zip release excluding docs
 
 on: 
-  # Only trigger on push to main with a version tag
+  # Only trigger on push with a version tag
   push:
-    branches:
-      - main
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   Zip-release:
+    
+    # Only run on main branch
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     
     permissions:
