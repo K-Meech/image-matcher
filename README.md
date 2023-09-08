@@ -15,7 +15,20 @@ This plugin adds:
 
 For more information on the Perspective-n-Point process, see OpenCV's documentation: https://docs.opencv.org/4.x/d5/d1f/calib3d_solvePnP.html
 
-## Tutorials
+## Installation + Tutorials
 
 - For installation instructions, see: [Installation](./docs/installation.md)
 - For a step by step tutorial of image matching, see: [Image matching tutorial](./docs/image-matching.md)
+
+## Releases
+
+Github Actions runs on this repository to automatically create releases when a
+commit is pushed to main with a version tag like v1.0.0. This will automatically
+create a zip file with only the required python files for installation in Blender.
+
+To trigger this:
+```
+# Add a tag to last commit (on main)
+git tag v1.0.0
+git push origin --tags
+```

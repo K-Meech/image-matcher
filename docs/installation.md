@@ -8,9 +8,9 @@ This add-on was developed with Blender 3.6, but it should work with any version 
 
 ## Installing the add-on
 
-Download a zip file of this repository from here: https://github.com/K-Meech/image-matcher, by clicking the green 'Code' button and selecting 'Download ZIP' 
+Download the latest image-matcher zip file from here: https://github.com/K-Meech/image-matcher/releases, by clicking on 'image-matcher.zip'
 
-![Screenshot of the Code button and Download ZIP option](./images/download-zip.jpg)
+![Screenshot of the Code button and Download ZIP option](./images/download-zip.png)
 
 Open Blender and select Edit > Preferences in the top menu bar. Then, select the 'Add-ons' tab on the left side.
 
