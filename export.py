@@ -115,13 +115,19 @@ def calculate_camera_intersection(camera_object, model, three_js):
     camera_direction.rotate(camera_object.rotation_euler)
     camera_direction.normalize()
 
-    # Needs any rotation/scaling etc of model to be applied!!
-    # If not I would need to convert the camera location / direction to the
-    # mesh's local space for this to work properly
-    cast_result = model.ray_cast(camera_object.location, camera_direction)
-    # cast_result = model.ray_cast(Vector((0, 0, 100)), Vector((0, 0, -1)))
+    # get the position/direction relative to the model
+    matrix = model.matrix_world.copy()
+    matrix_inv = matrix.inverted()
+    ray_origin = camera_object.location
+    ray_target = ray_origin + camera_direction
+    
+    ray_origin_obj = matrix_inv @ ray_origin
+    ray_target_obj = matrix_inv @ ray_target
+    ray_direction_obj = ray_target_obj - ray_origin_obj
 
-    hit_position = cast_result[1]
+    # Get hit position
+    cast_result = model.ray_cast(ray_origin_obj, ray_direction_obj)
+    hit_position = matrix @ cast_result[1]
 
     if three_js:
         # Account for Y-UP axis orientation
