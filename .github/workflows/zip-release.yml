@@ -18,9 +18,15 @@ jobs:
 
       - name: Check out repository code
         uses: actions/checkout@v3
+
+      - name: Make sub-folder for addon files
+        run: mkdir image-matcher
+      
+      - name: Move python files to folder
+        run: mv *.py ./image-matcher
         
-      - name: Only zip python files
-        run: zip image-matcher.zip *.py
+      - name: Zip addon folder
+        run: zip -r image-matcher.zip image-matcher
         
       - name: Release
         uses: softprops/action-gh-release@v1
