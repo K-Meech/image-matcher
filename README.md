@@ -21,6 +21,11 @@ For more information on the Perspective-n-Point process, see OpenCV's documentat
 - For a step by step tutorial of image matching, see: [Image matching tutorial](./docs/image-matching.md)
 - For a tutorial of making a video moving between each matched position, see: [Video tutorial](./docs/video.md). Note: this tutorial is advanced, and assumes prior Blender experience!
 
+## Examples
+
+You can see an example video moving between matched positions here: https://www.youtube.com/watch?v=zqXh3yGqvkA This uses publicly available data of the Ramesses II statue from the British Museum (data from [Sketchfab](https://sketchfab.com/3d-models/ramesses-ii-c98e1cab68134f4283f0448966f0835b) and [Collection Online](https://www.britishmuseum.org/collection/object/Y_EA19))
+
+![Example match on Ramesses II statue](./docs/images/example-match.jpg)
 ## Releases
 
 Github Actions runs on this repository to automatically create releases when a
