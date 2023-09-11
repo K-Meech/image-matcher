@@ -19,6 +19,7 @@ For more information on the Perspective-n-Point process, see OpenCV's documentat
 
 - For installation instructions, see: [Installation](./docs/installation.md)
 - For a step by step tutorial of image matching, see: [Image matching tutorial](./docs/image-matching.md)
+- For a tutorial of making a video moving between each matched position, see: [Video tutorial](./docs/video.md). Note: this tutorial is advanced, and assumes prior Blender experience!
 
 ## Releases
 

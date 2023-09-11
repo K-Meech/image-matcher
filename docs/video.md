@@ -30,9 +30,13 @@ For each 2D image:
 - Move the timeline playhead to a new time
 - Find the camera associated with that image (it will be inside the 'image-match' collection, then inside the collection with the same name as the image)
 - Copy the Location and Rotation of this camera to your animation camera (The 'Copy Attributes Menu' addon can be useful for this - go to Edit > Preferences and select 'Add-ons' on the left. Then search for 'copy' and enable the checkbox next to 'Interface: Copy Attributes Menu'. Once done, you can click on your animation camera, then shift + click the camera you want to copy the location and rotation from, then Ctrl + C and select 'Copy Location'. Then again, with 'Copy Rotation')
+
+![Copy attributes addon](./images/copy-attributes-addon.jpg)
 - Set a keyframe for location and rotation (Select your animation camera, press I on your keyboard and select 'Location & Rotation' )
 - Open the camera panel and set the Focal Length and Sensor Height (under Camera dropdown) to match the image camera.
 - Insert keyframes for Focal Length and Sensor Height by clicking the small circle next to each.
+
+![Camera keyframes](./images/camera-keyframes.jpg)
 
 ## Make transitions smoother
 
@@ -51,6 +55,8 @@ Often though, the default interpolation will mean that your object goes outside 
     - Add a Keyframe on the 'Influence' slider to be 1 at the start of the transition, and 0 at the end (It's also a good idea to set a 0 keyframe on the frame before the transition start and the frame after the transition end, to make sure it doesn't affect any other parts of your animation)
     - Now repeat these steps for the end of the transition, adding a Track To constraint that has the target as a new empty that is aligned to the position of the camera at the end of the transition. Set a keyframe on Influence to be 0 at the start of the transition and 1 at the end.
     - Now by playing around with where the influence of both switches from 0 to 1 and how fast, you can normally achieve a smooth camera move that always keeps the model in frame and gradually transitions from looking at the initial point on the model, to looking at the end point on the model.
+
+    ![Track to constraints](./images/track-to.jpg)
 
 - If neither of these work, then you will just have to manually keyframe the camera location/rotation until the transition looks good.
 
