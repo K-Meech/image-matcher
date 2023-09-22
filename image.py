@@ -46,9 +46,8 @@ class IMAGE_OT_add_image(bpy.types.Operator):
             self.report({"ERROR"}, "Please input image filepath")
             return {"CANCELLED"}
 
-        image_filename = os.path.basename(
-            os.path.normpath(settings.image_filepath)
-        )
+        absolute_image_path = os.path.normpath(bpy.path.abspath(settings.image_filepath))
+        image_filename = os.path.basename(absolute_image_path)
 
         if check_if_image_already_added(context, image_filename):
             self.report({"ERROR"}, "Image of same name already loaded")
@@ -101,10 +100,10 @@ class IMAGE_OT_add_image(bpy.types.Operator):
         image_match.points_3d_collection = point_collection
 
         # Hide any currently shown 3D points
-        swap_point_matches(settings.image_matches, 
+        swap_point_matches(settings.image_matches,
                            settings.current_image_name, image_match.name)
         settings.current_image_name = image_match.name
-        
+
         return {"FINISHED"}
 
 
@@ -128,7 +127,7 @@ class IMAGE_OT_swap_image(bpy.types.Operator):
         image_match = settings.image_matches[self.image_name]
 
         open_movie_clip(image_match.movie_clip)
-        swap_point_matches(settings.image_matches, 
+        swap_point_matches(settings.image_matches,
                            settings.current_image_name, self.image_name)
         settings.current_image_name = self.image_name
 
